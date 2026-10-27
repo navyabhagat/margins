@@ -25,6 +25,12 @@ export function App() {
   return (
     <div className="shell">
       <div className="grain" aria-hidden="true" />
+      <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
+        <filter id="pencil" x="-20%" y="-5%" width="140%" height="110%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </svg>
       {configError ? (
         <div className="page no-tabs"><Logo width={160} /><Notice error>{configError}</Notice></div>
       ) : session === undefined ? (

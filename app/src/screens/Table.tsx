@@ -87,7 +87,7 @@ export function Table() {
           </p>
         </div>
       ) : (
-        <div className="cards">
+        <div className="notes">
           {visible.map((t) => (
             <TopicCard key={t.id} topic={t} canRemove={t.author_id === me || isAdmin} onChange={reload} />
           ))}
@@ -99,52 +99,83 @@ export function Table() {
   );
 }
 
+/** Splits a note into list items when it's written as "- one" / "- two" lines. */
+function NoteBody({ text }: { text: string }) {
+  const lines = text.split(/\r?\n|\s+(?=[-–•]\s)/).map((l) => l.trim()).filter(Boolean);
+  const isList = lines.length > 1 && lines.every((l) => /^[-–•]\s*/.test(l));
+  if (!isList) return <p className="note-body">{text}</p>;
+  return (
+    <ul className="note-body note-list">
+      {lines.map((l, i) => <li key={i}>{l.replace(/^[-–•]\s*/, '').replace(/;\s*$/, '')}</li>)}
+    </ul>
+  );
+}
+
+/** Pencil tally marks: groups of five. */
+function tally(n: number) {
+  const groups = Math.floor(n / 5);
+  return ['||||/'.repeat(groups).replace(/\/(?=\|)/g, '/ '), '|'.repeat(n % 5)].filter(Boolean).join(' ');
+}
+
 function TopicCard({ topic, canRemove, onChange }: { topic: Topic; canRemove: boolean; onChange: () => Promise<void> }) {
   const act = useAction();
+  const [menu, setMenu] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const done = topic.status === 'discussed';
 
   const doThen = (fn: () => Promise<unknown>) => async () => {
+    setMenu(false);
     const ok = await act.run(async () => { await fn(); return true; });
     if (ok) await onChange();
   };
 
+  const when = topic.discussed_at
+    ? new Date(topic.discussed_at).toLocaleString('en-US', { month: 'short', day: 'numeric' })
+    : null;
+
   return (
-    <article className={`card${topic.status === 'discussed' ? ' discussed' : ''}`}>
-      <div className="top">
-        <span>{topic.page != null ? `p. ${topic.page}` : 'any page'}</span>
-        {topic.is_ahead_of_me && <span style={{ color: 'var(--mood)', fontWeight: 700 }}>past your page</span>}
-      </div>
-      <p className="body">{topic.body}</p>
-      <div className="bottom">
-        <span>added by {topic.author_name ?? 'a former member'}</span>
-        <button className="metoo" type="button" aria-pressed={topic.voted_by_me} disabled={act.busy}
-                onClick={doThen(() => margins.toggleMeToo(topic.id))}>
-          me too · {topic.vote_count}
-        </button>
-      </div>
-      <div className="bottom">
-        {topic.status === 'open' ? (
-          <button className="btn quiet" type="button" disabled={act.busy}
-                  onClick={doThen(() => margins.setTopicStatus(topic.id, 'discussed'))}>
-            We talked about this
-          </button>
-        ) : (
-          <button className="btn quiet" type="button" disabled={act.busy}
-                  onClick={doThen(() => margins.setTopicStatus(topic.id, 'open'))}>
-            Put it back on the table
-          </button>
-        )}
-        {canRemove && (confirming ? (
-          <span className="row" style={{ gap: 4 }}>
-            <button className="btn quiet" type="button" style={{ color: 'var(--danger)' }}
-                    onClick={doThen(() => margins.deleteTopic(topic.id))}>Remove it</button>
-            <button className="btn quiet" type="button" onClick={() => setConfirming(false)}>Keep</button>
+    <article className={`note${done ? ' done' : ''}${topic.page != null ? ' has-page' : ''}`}>
+      {topic.page != null && <span className="note-page">p. {topic.page}</span>}
+      <span className="note-bracket" aria-hidden="true" />
+      <div className="note-main">
+        <NoteBody text={topic.body} />
+        <div className="note-foot">
+          <span className="note-who">
+            {topic.author_name ?? 'A former member'}
+            {done && when ? ` · talked about ${when}` : ''}
+            {topic.is_ahead_of_me && !done ? <span className="note-ahead"> · past your page</span> : null}
           </span>
-        ) : (
-          <button className="btn quiet" type="button" onClick={() => setConfirming(true)}>Remove</button>
-        ))}
+          <span className="note-actions">
+            {!done && (
+              <button type="button" className="note-metoo" aria-pressed={topic.voted_by_me} disabled={act.busy}
+                      aria-label={`${topic.voted_by_me ? 'Remove your' : 'Add your'} me too. ${topic.vote_count} so far.`}
+                      onClick={doThen(() => margins.toggleMeToo(topic.id))}>
+                {topic.vote_count === 0 ? '+ me too' : <><span className="tally">{tally(topic.vote_count)}</span> me too</>}
+              </button>
+            )}
+            <span className="note-menu-wrap">
+              <button type="button" className="note-more" aria-label="More" aria-expanded={menu}
+                      onClick={() => { setMenu(!menu); setConfirming(false); }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" /><circle cx="12" cy="12" r="1.6" fill="currentColor" /><circle cx="19" cy="12" r="1.6" fill="currentColor" /></svg>
+              </button>
+              {menu && (
+                <span className="note-menu" role="menu">
+                  {done
+                    ? <button type="button" role="menuitem" onClick={doThen(() => margins.setTopicStatus(topic.id, 'open'))}>Put it back on the table</button>
+                    : <button type="button" role="menuitem" onClick={doThen(() => margins.setTopicStatus(topic.id, 'discussed'))}>We talked about this</button>}
+                  {canRemove && !confirming && (
+                    <button type="button" role="menuitem" onClick={() => setConfirming(true)}>Remove…</button>
+                  )}
+                  {canRemove && confirming && (
+                    <button type="button" role="menuitem" className="danger" onClick={doThen(() => margins.deleteTopic(topic.id))}>Yes, remove it</button>
+                  )}
+                </span>
+              )}
+            </span>
+          </span>
+        </div>
+        <Notice error>{act.error}</Notice>
       </div>
-      <Notice error>{act.error}</Notice>
     </article>
   );
 }
