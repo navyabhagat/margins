@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { Book, BookOverview, Member, MemberRole } from '@margins';
+import type { Book, BookOverview, BookStatus, Member, MemberRole } from '@margins';
 import { margins } from '../lib/margins';
 import { useAction, useLoad } from '../lib/hooks';
 import { fromLocalInput, initials, monthYear, MOODS, toLocalInput } from '../lib/format';
@@ -50,7 +50,8 @@ export function ClubSettings() {
           <h2 id="books-h">plan the <em>books</em></h2>
           {planned.length === 0 && <p className="meta">No current or upcoming books. Add the next one below.</p>}
           {planned.map((b) => <PlannedBook key={b.id} book={b} onChange={async () => { await reload(); await reloadClub(); }} />)}
-          <AddBook clubId={club.id} onAdded={reload} />
+          <AddBook clubId={club.id} takenMonths={books.map((b) => b.month.slice(0, 7))}
+                   currentMonth={books.find((b) => b.status === 'current')?.month.slice(0, 7)} onAdded={async () => { await reload(); await reloadClub(); }} />
         </section>
       )}
 
@@ -150,14 +151,24 @@ function PlannedBook({ book, onChange }: { book: BookOverview; onChange: () => P
   );
 }
 
-function AddBook({ clubId, onAdded }: { clubId: string; onAdded: () => Promise<void> }) {
+function AddBook({ clubId, takenMonths, currentMonth, onAdded }: { clubId: string; takenMonths: string[]; currentMonth?: string; onAdded: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
+  // Suggest the first month from now on that doesn't have a book yet.
+  const suggested = (() => {
+    const d = new Date();
+    for (let i = 0; i < 36; i++) {
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (!takenMonths.includes(key)) return key;
+      d.setMonth(d.getMonth() + 1);
+    }
+    return undefined;
+  })();
   return (
     <details open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
       <summary>Add a book</summary>
       {open && (
         <div style={{ marginTop: 12 }}>
-          <BookForm submitLabel="Add book" onSubmit={async (values) => {
+          <BookForm submitLabel="Add book" isNew defaultMonth={suggested} takenMonths={takenMonths} currentMonth={currentMonth} onSubmit={async (values) => {
             await margins.addBook(clubId, values as Parameters<typeof margins.addBook>[1]);
             setOpen(false);
             await onAdded();
@@ -171,21 +182,43 @@ function AddBook({ clubId, onAdded }: { clubId: string; onAdded: () => Promise<v
 type BookValues = {
   title: string; author: string; month: string; published_year: number | null; page_count: number | null;
   meeting_at: string | null; meeting_place: string | null; note: string | null; mood_color: string | null;
+  status?: BookStatus;
 };
 
-function BookForm({ initial, submitLabel, onSubmit }: {
+const thisMonthKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
+/**
+ * A sensible starting guess: months before the club's current book (or before
+ * this month, if there's none) are already read; later months are coming up.
+ */
+const statusFor = (month: string, currentMonth?: string): BookStatus => {
+  const pivot = currentMonth ?? thisMonthKey();
+  if (month < pivot) return 'finished';
+  if (month === pivot && !currentMonth) return 'current';
+  return 'upcoming';
+};
+
+function BookForm({ initial, submitLabel, onSubmit, isNew, defaultMonth, takenMonths = [], currentMonth }: {
   initial?: Book; submitLabel: string; onSubmit: (values: BookValues) => Promise<void>;
+  isNew?: boolean; defaultMonth?: string; takenMonths?: string[]; currentMonth?: string;
 }) {
   const nextMonth = (() => { const d = new Date(); d.setMonth(d.getMonth() + 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })();
+  const startMonth = initial?.month.slice(0, 7) ?? defaultMonth ?? nextMonth;
   const [v, setV] = useState({
     title: initial?.title ?? '', author: initial?.author ?? '',
-    month: initial?.month.slice(0, 7) ?? nextMonth,
+    month: startMonth,
     year: initial?.published_year?.toString() ?? '', pages: initial?.page_count?.toString() ?? '',
     meeting: toLocalInput(initial?.meeting_at ?? null), place: initial?.meeting_place ?? '',
     note: initial?.note ?? '', mood: initial?.mood_color ?? MOODS[0],
+    status: statusFor(startMonth, currentMonth),
   });
+  const [statusTouched, setStatusTouched] = useState(false);
+  const monthTaken = isNew && takenMonths.includes(v.month);
   const act = useAction();
-  const set = (k: keyof typeof v) => (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value });
+  const set = (k: keyof typeof v) => (e: { target: { value: string } }) => {
+    const next = { ...v, [k]: e.target.value };
+    if (k === 'month' && !statusTouched) next.status = statusFor(e.target.value, currentMonth);
+    setV(next);
+  };
   const prefix = initial ? `edit-${initial.id.slice(0, 6)}` : 'new';
 
   async function submit(e: FormEvent) {
@@ -195,6 +228,7 @@ function BookForm({ initial, submitLabel, onSubmit }: {
       published_year: v.year ? Number(v.year) : null, page_count: v.pages ? Number(v.pages) : null,
       meeting_at: fromLocalInput(v.meeting), meeting_place: v.place.trim() || null,
       note: v.note.trim() || null, mood_color: v.mood,
+      ...(isNew ? { status: v.status } : {}),
     }));
   }
 
@@ -206,7 +240,8 @@ function BookForm({ initial, submitLabel, onSubmit }: {
         <label className="field wide"><span>Author</span>
           <input id={`${prefix}-author`} className="input" required maxLength={200} value={v.author} onChange={set('author')} /></label>
         <label className="field"><span>Month</span>
-          <input id={`${prefix}-month`} className="input" type="month" required value={v.month} onChange={set('month')} /></label>
+          <input id={`${prefix}-month`} className="input" type="month" required value={v.month} onChange={set('month')}
+                 aria-invalid={monthTaken || undefined} /></label>
         <label className="field"><span>Pages</span>
           <input id={`${prefix}-pages`} className="input tabular" type="number" min={1} value={v.pages} onChange={set('pages')} /></label>
         <label className="field"><span>Meeting</span>
@@ -217,6 +252,21 @@ function BookForm({ initial, submitLabel, onSubmit }: {
           <input id={`${prefix}-place`} className="input" maxLength={200} placeholder="Place to be decided" value={v.place} onChange={set('place')} /></label>
         <label className="field wide"><span>A note for the club</span>
           <textarea id={`${prefix}-note`} className="input handwritten" maxLength={1000} value={v.note} onChange={set('note')} /></label>
+        {monthTaken && <p className="notice error wide" role="alert">Your club already has a book for that month. Pick a different month.</p>}
+        {isNew && (
+          <fieldset className="field wide" style={{ border: 0, padding: 0, margin: 0 }}>
+            <span>Where it goes</span>
+            <div className="segmented" role="group" aria-label="Where it goes">
+              {([['finished', 'Already read'], ['current', 'Reading now'], ['upcoming', 'Coming up']] as [BookStatus, string][]).map(([value, label]) => (
+                <button key={value} type="button" aria-pressed={v.status === value}
+                        onClick={() => { setStatusTouched(true); setV({ ...v, status: value }); }}>{label}</button>
+              ))}
+            </div>
+            <span style={{ textTransform: 'none', letterSpacing: 0, fontSize: 13 }}>
+              {v.status === 'finished' ? 'Goes straight onto the shelf.' : v.status === 'current' ? 'Becomes this month’s book. Any current book moves to the shelf.' : 'Waits in the plan until you start it.'}
+            </span>
+          </fieldset>
+        )}
         <fieldset className="field wide" style={{ border: 0, padding: 0, margin: 0 }}>
           <span>Color mood</span>
           <div className="row" style={{ gap: 8 }}>
@@ -229,7 +279,7 @@ function BookForm({ initial, submitLabel, onSubmit }: {
         </fieldset>
       </div>
       <Notice error>{act.error}</Notice>
-      <button className="btn small" type="submit" disabled={act.busy} style={{ alignSelf: 'flex-start' }}>{act.busy ? 'Saving…' : submitLabel}</button>
+      <button className="btn small" type="submit" disabled={act.busy || monthTaken} style={{ alignSelf: 'flex-start' }}>{act.busy ? 'Saving…' : submitLabel}</button>
     </form>
   );
 }
