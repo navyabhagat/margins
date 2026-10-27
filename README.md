@@ -66,7 +66,7 @@ await margins.addTopic(club.id, book!.id, 'Why are the false memories gray?', 12
 - **Clubs and members.** Each member is an owner, admin or member, and keeps a
   personal bookmark (`current_page`) in the current book. Clubs are joined with an
   8-character invite code.
-- **Books.** One per month per club, with a status (upcoming, current, finished),
+- **Books.** Each set in a month (several can share one), with a status (upcoming, current, finished),
   meeting time and place, a color mood, and a group bookmark ("read through p. 60").
   Only one book can be current at a time.
 - **The table.** Discussion topics with an optional page number. Members tap

@@ -267,13 +267,10 @@ begin
   values (tests.club(), 'Tomorrow, and Tomorrow, and Tomorrow', 'Gabrielle Zevin', '2026-12-01', '#2f4a5a')
   returning id into v_next;
 
-  begin
-    insert into public.books (club_id, title, author, month)
-    values (tests.club(), 'Two in one month', 'Someone', '2026-12-01');
-    perform tests.ok(false, 'a club reads one book per month');
-  exception when unique_violation then
-    perform tests.ok(true, 'a club reads one book per month');
-  end;
+  insert into public.books (club_id, title, author, month)
+  values (tests.club(), 'A second December book', 'Someone', '2026-12-01');
+  perform tests.ok((select count(*) from public.books where club_id = tests.club() and month = '2026-12-01') = 2,
+                   'a club can have more than one book in a month');
 
   perform public.start_book(v_next);
   select count(*) into n from public.books where club_id = tests.club() and status = 'current';

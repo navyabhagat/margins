@@ -50,7 +50,7 @@ export function ClubSettings() {
           <h2 id="books-h">plan the <em>books</em></h2>
           {planned.length === 0 && <p className="meta">No current or upcoming books. Add the next one below.</p>}
           {planned.map((b) => <PlannedBook key={b.id} book={b} onChange={async () => { await reload(); await reloadClub(); }} />)}
-          <AddBook clubId={club.id} takenMonths={books.map((b) => b.month.slice(0, 7))}
+          <AddBook clubId={club.id}
                    currentMonth={books.find((b) => b.status === 'current')?.month.slice(0, 7)} onAdded={async () => { await reload(); await reloadClub(); }} />
         </section>
       )}
@@ -151,24 +151,15 @@ function PlannedBook({ book, onChange }: { book: BookOverview; onChange: () => P
   );
 }
 
-function AddBook({ clubId, takenMonths, currentMonth, onAdded }: { clubId: string; takenMonths: string[]; currentMonth?: string; onAdded: () => Promise<void> }) {
+function AddBook({ clubId, currentMonth, onAdded }: { clubId: string; currentMonth?: string; onAdded: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
-  // Suggest the first month from now on that doesn't have a book yet.
-  const suggested = (() => {
-    const d = new Date();
-    for (let i = 0; i < 36; i++) {
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      if (!takenMonths.includes(key)) return key;
-      d.setMonth(d.getMonth() + 1);
-    }
-    return undefined;
-  })();
+  const suggested = thisMonthKey();
   return (
     <details open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
       <summary>Add a book</summary>
       {open && (
         <div style={{ marginTop: 12 }}>
-          <BookForm submitLabel="Add book" isNew defaultMonth={suggested} takenMonths={takenMonths} currentMonth={currentMonth} onSubmit={async (values) => {
+          <BookForm submitLabel="Add book" isNew defaultMonth={suggested} currentMonth={currentMonth} onSubmit={async (values) => {
             await margins.addBook(clubId, values as Parameters<typeof margins.addBook>[1]);
             setOpen(false);
             await onAdded();
@@ -197,9 +188,9 @@ const statusFor = (month: string, currentMonth?: string): BookStatus => {
   return 'upcoming';
 };
 
-function BookForm({ initial, submitLabel, onSubmit, isNew, defaultMonth, takenMonths = [], currentMonth }: {
+function BookForm({ initial, submitLabel, onSubmit, isNew, defaultMonth, currentMonth }: {
   initial?: Book; submitLabel: string; onSubmit: (values: BookValues) => Promise<void>;
-  isNew?: boolean; defaultMonth?: string; takenMonths?: string[]; currentMonth?: string;
+  isNew?: boolean; defaultMonth?: string; currentMonth?: string;
 }) {
   const nextMonth = (() => { const d = new Date(); d.setMonth(d.getMonth() + 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })();
   const startMonth = initial?.month.slice(0, 7) ?? defaultMonth ?? nextMonth;
@@ -212,7 +203,6 @@ function BookForm({ initial, submitLabel, onSubmit, isNew, defaultMonth, takenMo
     status: statusFor(startMonth, currentMonth),
   });
   const [statusTouched, setStatusTouched] = useState(false);
-  const monthTaken = isNew && takenMonths.includes(v.month);
   const act = useAction();
   const set = (k: keyof typeof v) => (e: { target: { value: string } }) => {
     const next = { ...v, [k]: e.target.value };
@@ -240,8 +230,7 @@ function BookForm({ initial, submitLabel, onSubmit, isNew, defaultMonth, takenMo
         <label className="field wide"><span>Author</span>
           <input id={`${prefix}-author`} className="input" required maxLength={200} value={v.author} onChange={set('author')} /></label>
         <label className="field"><span>Month</span>
-          <input id={`${prefix}-month`} className="input" type="month" required value={v.month} onChange={set('month')}
-                 aria-invalid={monthTaken || undefined} /></label>
+          <input id={`${prefix}-month`} className="input" type="month" required value={v.month} onChange={set('month')} /></label>
         <label className="field"><span>Pages</span>
           <input id={`${prefix}-pages`} className="input tabular" type="number" min={1} value={v.pages} onChange={set('pages')} /></label>
         <label className="field"><span>Meeting</span>
@@ -252,7 +241,6 @@ function BookForm({ initial, submitLabel, onSubmit, isNew, defaultMonth, takenMo
           <input id={`${prefix}-place`} className="input" maxLength={200} placeholder="Place to be decided" value={v.place} onChange={set('place')} /></label>
         <label className="field wide"><span>A note for the club</span>
           <textarea id={`${prefix}-note`} className="input handwritten" maxLength={1000} value={v.note} onChange={set('note')} /></label>
-        {monthTaken && <p className="notice error wide" role="alert">Your club already has a book for that month. Pick a different month.</p>}
         {isNew && (
           <fieldset className="field wide" style={{ border: 0, padding: 0, margin: 0 }}>
             <span>Where it goes</span>
@@ -279,7 +267,7 @@ function BookForm({ initial, submitLabel, onSubmit, isNew, defaultMonth, takenMo
         </fieldset>
       </div>
       <Notice error>{act.error}</Notice>
-      <button className="btn small" type="submit" disabled={act.busy || monthTaken} style={{ alignSelf: 'flex-start' }}>{act.busy ? 'Saving…' : submitLabel}</button>
+      <button className="btn small" type="submit" disabled={act.busy} style={{ alignSelf: 'flex-start' }}>{act.busy ? 'Saving…' : submitLabel}</button>
     </form>
   );
 }

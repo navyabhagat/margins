@@ -131,7 +131,8 @@ export class MarginsApi {
     return unwrap(await this.supabase
       .from('book_overview').select('*')
       .eq('club_id', clubId)
-      .order('month', { ascending: false }));
+      .order('month', { ascending: false })
+      .order('created_at', { ascending: false }));
   }
 
   async book(bookId: string): Promise<BookOverview> {
@@ -157,7 +158,6 @@ export class MarginsApi {
   /** Admins: add a book to the club's calendar. `month` is "YYYY-MM". */
   async addBook(clubId: string, book: Omit<NewBook, 'month'> & { month: string }): Promise<Book> {
     const month = book.month.length === 7 ? `${book.month}-01` : book.month;
-    await this.checkMonthFree(clubId, month);
     // A new current book goes through startBook, which moves the old one to the shelf.
     const status = book.status === 'current' ? 'upcoming' : book.status ?? 'upcoming';
     const added: Book = unwrap(await this.supabase.from('books')
@@ -166,10 +166,6 @@ export class MarginsApi {
   }
 
   async updateBook(bookId: string, changes: Partial<NewBook>): Promise<Book> {
-    if (changes.month) {
-      const current = unwrap(await this.supabase.from('books').select('club_id').eq('id', bookId).single()) as { club_id: string };
-      await this.checkMonthFree(current.club_id, changes.month, bookId);
-    }
     return unwrap(await this.supabase.from('books').update(changes).eq('id', bookId).select().single());
   }
 
@@ -364,17 +360,6 @@ export class MarginsApi {
   }
 
   // ---------------------------------------------------------------- helpers
-
-  /** A club reads one book a month; explain clearly when a month is taken. */
-  private async checkMonthFree(clubId: string, month: string, exceptBookId?: string) {
-    const { data } = await this.supabase.from('books').select('id, title').eq('club_id', clubId).eq('month', month);
-    const taken = (data ?? []).find((b: { id: string }) => b.id !== exceptBookId) as { title: string } | undefined;
-    if (taken) {
-      const [y, m] = month.split('-').map(Number);
-      const label = new Date(y, m - 1, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
-      throw new MarginsError(`${taken.title} is already your book for ${label}. Pick a different month.`, '23505');
-    }
-  }
 
   private async requireUser(): Promise<string> {
     const { data } = await this.supabase.auth.getUser();
