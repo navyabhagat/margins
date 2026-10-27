@@ -18,7 +18,7 @@
   --sans: "PT Sans", "Helvetica Neue", Arial, sans-serif;
   --hand: "Cedarville Cursive", "Segoe Script", cursive;
   --marker: "Reenie Beanie", "Segoe Print", cursive;
-  --note: "Caveat", "Segoe Print", "Bradley Hand", cursive;
+  --note: "Reenie Beanie", "Segoe Print", "Bradley Hand", cursive;
 
   --tab-h: 72px;
   color-scheme: light;
@@ -334,11 +334,11 @@ details[open] > summary::before { content: "– "; }
 }
 .note-page {
   position: absolute; left: 30px; top: -20px;
-  font-family: var(--note); font-weight: 600; font-size: 17px; color: var(--mood); transform: rotate(-4deg);
+  font-family: var(--note); font-size: 21px; color: var(--mood); transform: rotate(-4deg);
 }
 .note-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 2px 0; }
-.note-body { margin: 0; font-family: var(--note); font-size: 23px; line-height: 1.22; color: #2a2926; overflow-wrap: anywhere; }
-.note-list { padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.note-body { margin: 0; font-family: var(--note); font-size: 28px; line-height: 1.08; color: #2a2926; overflow-wrap: anywhere; }
+.note-list { padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .note-list li { display: grid; grid-template-columns: 16px minmax(0, 1fr); }
 .note-list li::before { content: "–"; color: var(--mood); }
 .note-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-family: var(--sans); font-size: 13px; color: var(--pencil); }
@@ -346,10 +346,10 @@ details[open] > summary::before { content: "– "; }
 .note-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 .note-metoo {
   min-height: 36px; padding: 0 8px; border: 0; background: none; cursor: pointer;
-  font-family: var(--note); font-size: 19px; color: var(--mood); white-space: nowrap;
+  font-family: var(--note); font-size: 23px; color: var(--mood); white-space: nowrap;
 }
-.note-metoo .tally { letter-spacing: 1px; font-weight: 600; }
-.note-metoo[aria-pressed="true"] { font-weight: 700; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+.note-metoo .tally { letter-spacing: 1px; }
+.note-metoo[aria-pressed="true"] { color: color-mix(in srgb, var(--mood) 75%, #000); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
 .note-more { width: 36px; height: 36px; border: 0; background: none; cursor: pointer; color: var(--pencil); display: inline-flex; align-items: center; justify-content: center; }
 .note-menu-wrap { position: relative; }
 .note-menu {
