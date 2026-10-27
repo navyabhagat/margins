@@ -295,6 +295,7 @@ select.input { appearance: none; background: transparent url("data:image/svg+xml
 .photo-grid .film-photo { aspect-ratio: 3 / 2; }
 .photo-grid figure:nth-child(odd) .film-photo { transform: rotate(-1deg); }
 .photo-grid figure:nth-child(even) .film-photo { transform: rotate(.8deg); }
+.photo-grid .film-photo .subtitle { font-size: 14px; left: 8px; right: 8px; bottom: 8%; }
 .photo-grid figcaption { font-family: var(--hand); font-size: 15px; color: var(--pencil); }
 
 .quote {

@@ -125,8 +125,8 @@ export interface Photo {
   book_id: string;
   uploaded_by: string | null;
   storage_path: string;
+  /** Shown in yellow over the photo, like a film subtitle. */
   caption: string | null;
-  subtitle: string | null;
   is_cover: boolean;
   created_at: string;
   /** Short-lived link for showing the image, filled in by the client. */

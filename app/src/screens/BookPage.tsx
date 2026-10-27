@@ -24,7 +24,7 @@ export function BookPage() {
   return (
     <div style={style}>
       <div style={{ position: 'relative' }}>
-        <FilmPhoto src={cover?.url} alt={cover?.caption ?? `A photo for ${book.title}`} subtitle={cover?.subtitle} height={240} />
+        <FilmPhoto src={cover?.url} alt={cover?.caption ?? `A photo for ${book.title}`} subtitle={cover?.caption} height={240} />
         <Link to={`/club/${club.id}/shelf`} aria-label="Back to our shelf"
               style={{ position: 'absolute', top: 26, left: 12, zIndex: 4, width: 44, height: 44, display: 'flex',
                        alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,.9)' }}>
@@ -268,7 +268,6 @@ function Quotes({ quotes, ...p }: SectionProps & { quotes: { id: string; body: s
 function Photos({ photos, ...p }: SectionProps & { photos: Photo[] }) {
   const [file, setFile] = useState<File | null>(null);
   const [caption, setCaption] = useState('');
-  const [subtitle, setSubtitle] = useState('');
   const [isCover, setIsCover] = useState(photos.length === 0);
   const [inputKey, setInputKey] = useState(0);
   const act = useAction();
@@ -277,8 +276,8 @@ function Photos({ photos, ...p }: SectionProps & { photos: Photo[] }) {
     e.preventDefault();
     if (!file) return;
     const ok = await act.run(() => margins.uploadPhoto(p.clubId, p.bookId, file,
-      { caption: caption.trim() || undefined, subtitle: subtitle.trim() || undefined, isCover }));
-    if (ok) { setFile(null); setCaption(''); setSubtitle(''); setIsCover(false); setInputKey((k) => k + 1); await p.onChange(); }
+      { caption: caption.trim() || undefined, isCover }));
+    if (ok) { setFile(null); setCaption(''); setIsCover(false); setInputKey((k) => k + 1); await p.onChange(); }
   }
   async function makeCover(photo: Photo) {
     const ok = await act.run(async () => {
@@ -301,8 +300,7 @@ function Photos({ photos, ...p }: SectionProps & { photos: Photo[] }) {
         <div className="photo-grid">
           {photos.map((ph) => (
             <figure key={ph.id}>
-              <FilmPhoto src={ph.url} alt={ph.caption ?? 'Club photo'} subtitle={ph.subtitle} letterbox={false} />
-              {ph.caption && <figcaption>{ph.caption}</figcaption>}
+              <FilmPhoto src={ph.url} alt={ph.caption ?? 'Club photo'} subtitle={ph.caption} letterbox={false} />
               {(ph.uploaded_by === p.me || p.isAdmin) && (
                 <div className="row" style={{ gap: 2, flexWrap: 'wrap' }}>
                   {ph.is_cover ? <span className="eyebrow mood">cover</span>
@@ -322,12 +320,9 @@ function Photos({ photos, ...p }: SectionProps & { photos: Photo[] }) {
             <input key={inputKey} id="photo-file" type="file" accept="image/jpeg,image/png,image/webp,image/heic" required
                    onChange={(e) => setFile(e.target.files?.[0] ?? null)} style={{ fontFamily: 'var(--sans)', fontSize: 14 }} />
           </label>
-          <label className="field"><span>Caption</span>
-            <input id="photo-caption" className="input" maxLength={200} placeholder="fog rolling over the lake"
+          <label className="field"><span>Caption (shows in yellow over the photo)</span>
+            <input id="photo-caption" className="input" maxLength={300} placeholder="fog rolling over the lake"
                    value={caption} onChange={(e) => setCaption(e.target.value)} /></label>
-          <label className="field"><span>Yellow subtitle over the photo (optional)</span>
-            <input id="photo-subtitle" className="input" maxLength={300} placeholder="A favorite line"
-                   value={subtitle} onChange={(e) => setSubtitle(e.target.value)} /></label>
           <label className="row" style={{ fontFamily: 'var(--sans)', fontSize: 14 }}>
             <input id="photo-cover" type="checkbox" checked={isCover} onChange={(e) => setIsCover(e.target.checked)} />
             Use as this book’s cover

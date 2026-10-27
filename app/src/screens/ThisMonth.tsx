@@ -59,7 +59,7 @@ export function ThisMonth() {
       </div>
 
       {cover && (
-        <FilmPhoto src={cover.url} alt={cover.caption ?? `A photo for ${book.title}`} subtitle={cover.subtitle}
+        <FilmPhoto src={cover.url} alt={cover.caption ?? `A photo for ${book.title}`} subtitle={cover.caption}
                    height={210} taped />
       )}
 

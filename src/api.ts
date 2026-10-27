@@ -323,9 +323,9 @@ export class MarginsApi {
     return signedUrl;
   }
 
-  /** Upload a photo to a book. Optional subtitle shows in yellow over it. */
+  /** Upload a photo to a book. The caption shows in yellow over it. */
   async uploadPhoto(clubId: string, bookId: string, file: Blob & { name?: string },
-                    opts: { caption?: string; subtitle?: string; isCover?: boolean } = {}): Promise<Photo> {
+                    opts: { caption?: string; isCover?: boolean } = {}): Promise<Photo> {
     const ext = (file.name?.split('.').pop() || file.type.split('/')[1] || 'jpg').toLowerCase();
     const path = `${clubId}/${bookId}/${crypto.randomUUID()}.${ext}`;
     unwrap(await this.supabase.storage.from(PHOTO_BUCKET).upload(path, file, { contentType: file.type || undefined }),
@@ -336,7 +336,7 @@ export class MarginsApi {
     }
     const { data, error } = await this.supabase.from('photos')
       .insert({ club_id: clubId, book_id: bookId, storage_path: path,
-                caption: opts.caption ?? null, subtitle: opts.subtitle ?? null, is_cover: !!opts.isCover })
+                caption: opts.caption ?? null, is_cover: !!opts.isCover })
       .select().single();
     if (error) {
       await this.supabase.storage.from(PHOTO_BUCKET).remove([path]);
@@ -345,7 +345,7 @@ export class MarginsApi {
     return { ...(data as Photo), url: await this.photoUrl(path) };
   }
 
-  async updatePhoto(photoId: string, changes: { caption?: string | null; subtitle?: string | null; is_cover?: boolean }) {
+  async updatePhoto(photoId: string, changes: { caption?: string | null; is_cover?: boolean }) {
     unwrap(await this.supabase.from('photos').update(changes).eq('id', photoId));
   }
 
