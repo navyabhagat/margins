@@ -1,0 +1,25 @@
+{
+  "name": "margins",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend for Margins, a book club app: Supabase database, security rules, and a typed client for the app screens.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:start": "supabase start",
+    "db:reset": "supabase db reset",
+    "db:test": "psql \"postgresql://postgres:postgres@127.0.0.1:54322/postgres\" -v ON_ERROR_STOP=1 -f supabase/tests/permissions.sql",
+    "db:push": "supabase db push",
+    "db:types": "supabase gen types typescript --local > src/database.types.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "devDependencies": {
+    "supabase": "^1.200.0",
+    "typescript": "^5.5.0"
+  }
+}
