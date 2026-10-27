@@ -133,10 +133,12 @@ export interface Photo {
   url?: string;
 }
 
+/** One member's own rating of a book. */
 export interface Rating {
   book_id: string;
   user_id: string;
   stars: number;
+  display_name?: string | null;
 }
 
 /** Everything the "past book" screen shows. */

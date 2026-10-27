@@ -15,7 +15,7 @@ export function BookPage() {
 
   if (loading && !data) return <Loading />;
   if (error) return <div className="page"><Notice error>{error}</Notice></div>;
-  const { book, topics, quotes, notes, photos } = data!;
+  const { book, topics, quotes, notes, photos, ratings } = data!;
   const cover = photos.find((p) => p.is_cover) ?? photos[0];
   const discussed = topics.filter((t) => t.status === 'discussed');
   const style = { '--mood': book.mood_color ?? '#8a4a2e' } as CSSProperties;
@@ -45,13 +45,14 @@ export function BookPage() {
         </div>
 
         <div className="stats">
-          <div><b>{book.avg_rating ?? '—'}</b><span className="eyebrow">our rating{book.rating_count ? ` (${book.rating_count})` : ''}</span></div>
+          <div><b>{book.avg_rating ?? '—'}</b><span className="eyebrow">average rating</span></div>
           <div><b>{book.discussed_topic_count}</b><span className="eyebrow">talked about</span></div>
           <div><b>{book.photo_count}</b><span className="eyebrow">photos</span></div>
         </div>
 
         {book.status !== 'upcoming' && (
-          <Rating clubId={club.id} bookId={book.id} mine={book.my_rating} onChange={reload} />
+          <Ratings clubId={club.id} bookId={book.id} mine={book.my_rating} average={book.avg_rating}
+                   ratings={ratings} me={me} memberCount={club.member_count} onChange={reload} />
         )}
 
         <section className="stack" aria-labelledby="talked-h">
@@ -78,9 +79,38 @@ export function BookPage() {
   );
 }
 
-function Rating({ clubId, bookId, mine, onChange }: { clubId: string; bookId: string; mine: number | null; onChange: () => Promise<void> }) {
+const STAR = 'M12 2.8l2.8 6 6.5.6-4.9 4.3 1.5 6.4L12 16.8l-5.9 3.3 1.5-6.4-4.9-4.3 6.5-.6z';
+
+/** Five stars filled to a value (half stars allowed). */
+function Stars({ value, size = 16, label }: { value: number; size?: number; label?: string }) {
+  return (
+    <span className="row" style={{ gap: 1, color: 'var(--mood)' }} role="img" aria-label={label ?? `${value} out of 5 stars`}>
+      {[1, 2, 3, 4, 5].map((s) => <StarIcon key={s} n={s} value={value} size={size} />)}
+    </span>
+  );
+}
+
+function StarIcon({ n, value, size }: { n: number; value: number; size: number }) {
+  const fill = value >= n ? 1 : value >= n - 0.5 ? 0.5 : 0;
+  const clip = `star-${n}-${fill}`;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <defs><clipPath id={clip}><rect x="0" y="0" width={24 * fill} height="24" /></clipPath></defs>
+      <path d={STAR} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d={STAR} fill="currentColor" clipPath={`url(#${clip})`} />
+    </svg>
+  );
+}
+
+/** Everyone rates the book on their own; the club sees each rating and the average. */
+function Ratings({ clubId, bookId, mine, average, ratings, me, memberCount, onChange }: {
+  clubId: string; bookId: string; mine: number | null; average: number | null;
+  ratings: { user_id: string; stars: number; display_name?: string | null }[];
+  me: string; memberCount: number; onChange: () => Promise<void>;
+}) {
   const act = useAction();
   const value = mine ?? 0;
+  const others = ratings.filter((r) => r.user_id !== me);
 
   async function pick(star: number) {
     // Tapping the star you're already on knocks off half a star.
@@ -89,24 +119,52 @@ function Rating({ clubId, bookId, mine, onChange }: { clubId: string; bookId: st
     const ok = await act.run(async () => { await margins.rate(clubId, bookId, next); return true; });
     if (ok) await onChange();
   }
+  async function clear() {
+    const ok = await act.run(async () => { await margins.clearMyRating(bookId); return true; });
+    if (ok) await onChange();
+  }
 
   return (
-    <section className="spread" aria-label="Your rating">
-      <span className="eyebrow">your rating{mine ? ` · ${mine}` : ''}</span>
-      <div className="stars">
-        {[1, 2, 3, 4, 5].map((s) => {
-          const fill = value >= s ? 1 : value >= s - 0.5 ? 0.5 : 0;
-          return (
-            <button key={s} type="button" aria-label={`${s} ${s === 1 ? 'star' : 'stars'}`} disabled={act.busy} onClick={() => pick(s)}>
-              <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
-                <defs><clipPath id={`half-${s}`}><rect x="0" y="0" width={24 * fill} height="24" /></clipPath></defs>
-                <path d="M12 2.8l2.8 6 6.5.6-4.9 4.3 1.5 6.4L12 16.8l-5.9 3.3 1.5-6.4-4.9-4.3 6.5-.6z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-                <path d="M12 2.8l2.8 6 6.5.6-4.9 4.3 1.5 6.4L12 16.8l-5.9 3.3 1.5-6.4-4.9-4.3 6.5-.6z" fill="currentColor" clipPath={`url(#half-${s})`} />
-              </svg>
-            </button>
-          );
-        })}
+    <section className="stack" aria-labelledby="ratings-h">
+      <h2 id="ratings-h">everyone’s <em>ratings</em></h2>
+
+      <div className="spread">
+        <div className="stack" style={{ gap: 2 }}>
+          <span className="eyebrow">average</span>
+          <span className="meta">{ratings.length} of {memberCount} rated</span>
+        </div>
+        <div className="row" style={{ gap: 10 }}>
+          <b style={{ fontSize: 26 }} className="tabular">{average ?? '—'}</b>
+          <Stars value={average ?? 0} size={20} label={average ? `Average ${average} out of 5` : 'No ratings yet'} />
+        </div>
       </div>
+
+      <div className="spread" style={{ borderTop: '1px solid var(--rule)', paddingTop: 12 }}>
+        <div className="stack" style={{ gap: 2 }}>
+          <span style={{ fontWeight: 700 }}>You</span>
+          <span className="meta">
+            {mine ? `${mine} ${mine === 1 ? 'star' : 'stars'}` : 'Tap to rate. Tap again for half.'}
+            {mine && <> · <button className="link" type="button" onClick={clear} style={{ fontSize: 13 }}>clear</button></>}
+          </span>
+        </div>
+        <div className="stars" role="group" aria-label="Your rating">
+          {[1, 2, 3, 4, 5].map((s) => (
+            <button key={s} type="button" aria-label={`Rate ${s} ${s === 1 ? 'star' : 'stars'}`} disabled={act.busy} onClick={() => pick(s)}>
+              <StarIcon n={s} value={value} size={26} />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {others.map((r) => (
+        <div key={r.user_id} className="spread" style={{ borderTop: '1px solid var(--rule)', paddingTop: 10 }}>
+          <span>{r.display_name ?? 'A member'}</span>
+          <span className="row" style={{ gap: 8 }}>
+            <span className="meta tabular">{r.stars}</span>
+            <Stars value={r.stars} size={18} />
+          </span>
+        </div>
+      ))}
       <Notice error>{act.error}</Notice>
     </section>
   );

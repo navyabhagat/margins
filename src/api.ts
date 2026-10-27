@@ -146,8 +146,10 @@ export class MarginsApi {
       this.quotes(bookId),
       this.meetingNotes(bookId),
       this.photos(bookId),
-      this.supabase.from('ratings').select('book_id, user_id, stars').eq('book_id', bookId)
-        .then((r) => unwrap(r) as Rating[]),
+      this.supabase.from('ratings').select('book_id, user_id, stars, profile:profiles(display_name)')
+        .eq('book_id', bookId).order('stars', { ascending: false })
+        .then((r) => (unwrap(r) as unknown as (Rating & { profile: { display_name: string } | null })[])
+          .map(({ profile, ...rest }) => ({ ...rest, display_name: profile?.display_name ?? null }))),
     ]);
     return { book, topics, quotes, notes, photos, ratings };
   }
@@ -199,6 +201,12 @@ export class MarginsApi {
     }
     unwrap(await this.supabase.from('ratings')
       .upsert({ club_id: clubId, book_id: bookId, stars }, { onConflict: 'book_id,user_id' }));
+  }
+
+  /** Take back your rating. */
+  async clearMyRating(bookId: string) {
+    const user = await this.requireUser();
+    unwrap(await this.supabase.from('ratings').delete().eq('book_id', bookId).eq('user_id', user));
   }
 
   // -------------------------------------------------------------- the table
