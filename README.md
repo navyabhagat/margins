@@ -13,6 +13,30 @@ sign-in and photo storage built in. This repository holds:
 | `supabase/seed.sql` | Sample data (the Second Chapter club, *The Unknown* and *Recursion*) for local testing |
 | `supabase/tests/` | Permission tests that prove each club's data stays private |
 | `src/` | A TypeScript client with one function for each thing the app does |
+| `app/` | The Margins web app (React), using that client |
+
+## Run the app
+
+1. Make sure the database is set up (see "Set up a live project" below) and that a `.env`
+   file sits in this folder with your project's URL and anon key (copy `.env.example`).
+2. In Supabase, under **Authentication → URL Configuration**, set the Site URL to
+   `http://localhost:3000` while you're testing.
+3. Then:
+   ```sh
+   cd app
+   npm install
+   npm run dev
+   ```
+4. Open http://localhost:3000, enter your email, and click the link Supabase sends you.
+   Start your club, add a book from the **club** tab, and share the invite code.
+
+Supabase's built-in email service only sends a few sign-in emails an hour. Before inviting
+the whole club, connect your own email sender under **Project Settings → Authentication → SMTP**.
+
+To put the app online, run `npm run build` in `app/` and host the `app/dist` folder on any
+static host (Netlify, Vercel, Cloudflare Pages). Set it to send every path to `index.html`,
+add the two `VITE_SUPABASE_…` values as environment variables, and change the Site URL in
+Supabase to the new address.
 
 ## How the app's screens map to the backend
 

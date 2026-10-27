@@ -1,0 +1,285 @@
+import { useState, type CSSProperties, type FormEvent } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import type { Photo } from '@margins';
+import { margins } from '../lib/margins';
+import { useAction, useLoad } from '../lib/hooks';
+import { meetingDay, monthName } from '../lib/format';
+import { useClub } from '../components/ClubLayout';
+import { BackArrow, FilmPhoto, Loading, Notice } from '../components/bits';
+
+/** One book's record: rating, what we talked about, notes, lines, photos. */
+export function BookPage() {
+  const { bookId = '' } = useParams();
+  const { club, me, isAdmin } = useClub();
+  const { data, error, loading, reload } = useLoad(() => margins.bookRecord(bookId), [bookId]);
+
+  if (loading && !data) return <Loading />;
+  if (error) return <div className="page"><Notice error>{error}</Notice></div>;
+  const { book, topics, quotes, notes, photos } = data!;
+  const cover = photos.find((p) => p.is_cover) ?? photos[0];
+  const discussed = topics.filter((t) => t.status === 'discussed');
+  const style = { '--mood': book.mood_color ?? '#8a4a2e' } as CSSProperties;
+  const statusLabel = book.status === 'current' ? 'reading now' : book.status === 'upcoming' ? 'coming up' : 'finished';
+
+  return (
+    <div style={style}>
+      <div style={{ position: 'relative' }}>
+        <FilmPhoto src={cover?.url} alt={cover?.caption ?? `A photo for ${book.title}`} subtitle={cover?.subtitle} height={240} />
+        <Link to={`/club/${club.id}/shelf`} aria-label="Back to our shelf"
+              style={{ position: 'absolute', top: 26, left: 12, zIndex: 4, width: 44, height: 44, display: 'flex',
+                       alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,.9)' }}>
+          <BackArrow />
+        </Link>
+        <span className="tape" style={{ position: 'absolute', right: 14, bottom: 4, zIndex: 4, transform: 'rotate(-3deg)' }}>
+          {monthName(book.month).toLowerCase()} · {statusLabel}
+        </span>
+      </div>
+
+      <div className="page moody mood-em">
+        <div className="stack" style={{ gap: 4 }}>
+          <h1>{book.title.toLowerCase()}</h1>
+          <p className="meta">
+            {book.author}
+            {book.meeting_at ? ` · ${book.status === 'finished' ? 'met' : 'meets'} ${meetingDay(book.meeting_at).weekday}, ${meetingDay(book.meeting_at).month} ${meetingDay(book.meeting_at).day}` : ''}
+          </p>
+        </div>
+
+        <div className="stats">
+          <div><b>{book.avg_rating ?? '—'}</b><span className="eyebrow">our rating{book.rating_count ? ` (${book.rating_count})` : ''}</span></div>
+          <div><b>{book.discussed_topic_count}</b><span className="eyebrow">talked about</span></div>
+          <div><b>{book.photo_count}</b><span className="eyebrow">photos</span></div>
+        </div>
+
+        {book.status !== 'upcoming' && (
+          <Rating clubId={club.id} bookId={book.id} mine={book.my_rating} onChange={reload} />
+        )}
+
+        <section className="stack" aria-labelledby="talked-h">
+          <h2 id="talked-h">what we <em>talked about</em></h2>
+          {discussed.length === 0 ? (
+            <p className="meta">Topics ticked off at the meeting show up here.</p>
+          ) : (
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {discussed.map((t) => (
+                <li key={t.id} className="row" style={{ alignItems: 'flex-start' }}>
+                  <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--mood)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 3 }}><path d="M5 12l5 5 9-10" /></svg>
+                  <span>{t.body}{t.page != null && <span className="meta"> · p. {t.page}</span>}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <Notes clubId={club.id} bookId={book.id} notes={notes} me={me} isAdmin={isAdmin} onChange={reload} />
+        <Quotes clubId={club.id} bookId={book.id} quotes={quotes} me={me} isAdmin={isAdmin} onChange={reload} />
+        <Photos clubId={club.id} bookId={book.id} photos={photos} me={me} isAdmin={isAdmin} onChange={reload} />
+      </div>
+    </div>
+  );
+}
+
+function Rating({ clubId, bookId, mine, onChange }: { clubId: string; bookId: string; mine: number | null; onChange: () => Promise<void> }) {
+  const act = useAction();
+  const value = mine ?? 0;
+
+  async function pick(star: number) {
+    // Tapping the star you're already on knocks off half a star.
+    const next = value === star ? star - 0.5 : star;
+    if (next < 0.5) return;
+    const ok = await act.run(async () => { await margins.rate(clubId, bookId, next); return true; });
+    if (ok) await onChange();
+  }
+
+  return (
+    <section className="spread" aria-label="Your rating">
+      <span className="eyebrow">your rating{mine ? ` · ${mine}` : ''}</span>
+      <div className="stars">
+        {[1, 2, 3, 4, 5].map((s) => {
+          const fill = value >= s ? 1 : value >= s - 0.5 ? 0.5 : 0;
+          return (
+            <button key={s} type="button" aria-label={`${s} ${s === 1 ? 'star' : 'stars'}`} disabled={act.busy} onClick={() => pick(s)}>
+              <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+                <defs><clipPath id={`half-${s}`}><rect x="0" y="0" width={24 * fill} height="24" /></clipPath></defs>
+                <path d="M12 2.8l2.8 6 6.5.6-4.9 4.3 1.5 6.4L12 16.8l-5.9 3.3 1.5-6.4-4.9-4.3 6.5-.6z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                <path d="M12 2.8l2.8 6 6.5.6-4.9 4.3 1.5 6.4L12 16.8l-5.9 3.3 1.5-6.4-4.9-4.3 6.5-.6z" fill="currentColor" clipPath={`url(#half-${s})`} />
+              </svg>
+            </button>
+          );
+        })}
+      </div>
+      <Notice error>{act.error}</Notice>
+    </section>
+  );
+}
+
+type SectionProps = { clubId: string; bookId: string; me: string; isAdmin: boolean; onChange: () => Promise<void> };
+
+function Notes({ notes, ...p }: SectionProps & { notes: { id: string; body: string; author_id: string | null; created_at: string }[] }) {
+  const [body, setBody] = useState('');
+  const act = useAction();
+
+  async function add(e: FormEvent) {
+    e.preventDefault();
+    const ok = await act.run(() => margins.addMeetingNote(p.clubId, p.bookId, body));
+    if (ok) { setBody(''); await p.onChange(); }
+  }
+  async function remove(id: string) {
+    const ok = await act.run(async () => { await margins.deleteMeetingNote(id); return true; });
+    if (ok) await p.onChange();
+  }
+
+  return (
+    <section className="stack" aria-labelledby="notes-h">
+      <h2 id="notes-h">meeting <em>notes</em></h2>
+      {notes.length === 0 && <p className="meta">How did the meeting go? Write it down so the shelf remembers.</p>}
+      {notes.map((n) => (
+        <div key={n.id} className="stack" style={{ gap: 2 }}>
+          <p className="hand" style={{ whiteSpace: 'pre-line' }}>{n.body}</p>
+          {(n.author_id === p.me || p.isAdmin) && (
+            <button className="btn quiet" type="button" style={{ alignSelf: 'flex-end' }} onClick={() => remove(n.id)}>Remove</button>
+          )}
+        </div>
+      ))}
+      <details>
+        <summary>Add a note</summary>
+        <form className="form" onSubmit={add} style={{ marginTop: 12 }}>
+          <label className="field">
+            <span>Note</span>
+            <textarea id="note-body" className="input handwritten" required maxLength={4000} value={body}
+                      placeholder="What we argued about, who changed their mind…" onChange={(e) => setBody(e.target.value)} />
+          </label>
+          <button className="btn small" type="submit" disabled={act.busy} style={{ alignSelf: 'flex-start' }}>Save note</button>
+        </form>
+      </details>
+      <Notice error>{act.error}</Notice>
+    </section>
+  );
+}
+
+function Quotes({ quotes, ...p }: SectionProps & { quotes: { id: string; body: string; page: number | null; speaker: string | null; added_by: string | null }[] }) {
+  const [body, setBody] = useState('');
+  const [page, setPage] = useState('');
+  const [speaker, setSpeaker] = useState('');
+  const act = useAction();
+
+  async function add(e: FormEvent) {
+    e.preventDefault();
+    const ok = await act.run(() => margins.addQuote(p.clubId, p.bookId, body,
+      { page: page === '' ? undefined : Number(page), speaker: speaker.trim() || undefined }));
+    if (ok) { setBody(''); setPage(''); setSpeaker(''); await p.onChange(); }
+  }
+  async function remove(id: string) {
+    const ok = await act.run(async () => { await margins.deleteQuote(id); return true; });
+    if (ok) await p.onChange();
+  }
+
+  return (
+    <section className="stack" aria-labelledby="quotes-h">
+      <h2 id="quotes-h">lines we <em>kept</em></h2>
+      {quotes.length === 0 && <p className="meta">Add the lines the club underlined.</p>}
+      {quotes.map((q) => (
+        <figure key={q.id} className="quote">
+          <q>{q.body}</q>
+          <small className="spread">
+            <span>{[q.speaker, q.page != null && `p. ${q.page}`].filter(Boolean).join(' · ')}</span>
+            {(q.added_by === p.me || p.isAdmin) && <button className="btn quiet" type="button" onClick={() => remove(q.id)}>Remove</button>}
+          </small>
+        </figure>
+      ))}
+      <details>
+        <summary>Add a line</summary>
+        <form className="form" onSubmit={add} style={{ marginTop: 12 }}>
+          <label className="field">
+            <span>The line</span>
+            <textarea id="quote-body" className="input handwritten" required maxLength={600} value={body} onChange={(e) => setBody(e.target.value)} />
+          </label>
+          <div className="form-grid">
+            <label className="field"><span>Who says it</span>
+              <input id="quote-speaker" className="input" maxLength={100} value={speaker} onChange={(e) => setSpeaker(e.target.value)} /></label>
+            <label className="field"><span>Page</span>
+              <input id="quote-page" className="input tabular" type="number" min={0} value={page} onChange={(e) => setPage(e.target.value)} /></label>
+          </div>
+          <button className="btn small" type="submit" disabled={act.busy} style={{ alignSelf: 'flex-start' }}>Save line</button>
+        </form>
+      </details>
+      <Notice error>{act.error}</Notice>
+    </section>
+  );
+}
+
+function Photos({ photos, ...p }: SectionProps & { photos: Photo[] }) {
+  const [file, setFile] = useState<File | null>(null);
+  const [caption, setCaption] = useState('');
+  const [subtitle, setSubtitle] = useState('');
+  const [isCover, setIsCover] = useState(photos.length === 0);
+  const [inputKey, setInputKey] = useState(0);
+  const act = useAction();
+
+  async function upload(e: FormEvent) {
+    e.preventDefault();
+    if (!file) return;
+    const ok = await act.run(() => margins.uploadPhoto(p.clubId, p.bookId, file,
+      { caption: caption.trim() || undefined, subtitle: subtitle.trim() || undefined, isCover }));
+    if (ok) { setFile(null); setCaption(''); setSubtitle(''); setIsCover(false); setInputKey((k) => k + 1); await p.onChange(); }
+  }
+  async function makeCover(photo: Photo) {
+    const ok = await act.run(async () => {
+      const current = photos.find((x) => x.is_cover);
+      if (current) await margins.updatePhoto(current.id, { is_cover: false });
+      await margins.updatePhoto(photo.id, { is_cover: true });
+      return true;
+    });
+    if (ok) await p.onChange();
+  }
+  async function remove(photo: Photo) {
+    const ok = await act.run(async () => { await margins.deletePhoto(photo); return true; });
+    if (ok) await p.onChange();
+  }
+
+  return (
+    <section className="stack" aria-labelledby="photos-h">
+      <h2 id="photos-h"><em>photos</em></h2>
+      {photos.length > 0 && (
+        <div className="photo-grid">
+          {photos.map((ph) => (
+            <figure key={ph.id}>
+              <FilmPhoto src={ph.url} alt={ph.caption ?? 'Club photo'} subtitle={ph.subtitle} letterbox={false} />
+              {ph.caption && <figcaption>{ph.caption}</figcaption>}
+              {(ph.uploaded_by === p.me || p.isAdmin) && (
+                <div className="row" style={{ gap: 2, flexWrap: 'wrap' }}>
+                  {ph.is_cover ? <span className="eyebrow mood">cover</span>
+                    : <button className="btn quiet" type="button" onClick={() => makeCover(ph)}>Make cover</button>}
+                  <button className="btn quiet" type="button" onClick={() => remove(ph)}>Remove</button>
+                </div>
+              )}
+            </figure>
+          ))}
+        </div>
+      )}
+      <details open={photos.length === 0}>
+        <summary>Add a photo</summary>
+        <form className="form" onSubmit={upload} style={{ marginTop: 12 }}>
+          <label className="field">
+            <span>Photo</span>
+            <input key={inputKey} id="photo-file" type="file" accept="image/jpeg,image/png,image/webp,image/heic" required
+                   onChange={(e) => setFile(e.target.files?.[0] ?? null)} style={{ fontFamily: 'var(--sans)', fontSize: 14 }} />
+          </label>
+          <label className="field"><span>Caption</span>
+            <input id="photo-caption" className="input" maxLength={200} placeholder="fog rolling over the lake"
+                   value={caption} onChange={(e) => setCaption(e.target.value)} /></label>
+          <label className="field"><span>Yellow subtitle over the photo (optional)</span>
+            <input id="photo-subtitle" className="input" maxLength={300} placeholder="A favorite line"
+                   value={subtitle} onChange={(e) => setSubtitle(e.target.value)} /></label>
+          <label className="row" style={{ fontFamily: 'var(--sans)', fontSize: 14 }}>
+            <input id="photo-cover" type="checkbox" checked={isCover} onChange={(e) => setIsCover(e.target.checked)} />
+            Use as this book’s cover
+          </label>
+          <button className="btn small" type="submit" disabled={act.busy || !file} style={{ alignSelf: 'flex-start' }}>
+            {act.busy ? 'Uploading…' : 'Upload photo'}
+          </button>
+        </form>
+      </details>
+      <Notice error>{act.error}</Notice>
+    </section>
+  );
+}
