@@ -44,7 +44,7 @@ export function BookPage() {
         </div>
 
         <div className="stats">
-          <div><b>{book.avg_rating ?? '—'}</b><span className="eyebrow">average rating</span></div>
+          <div><b>{book.rating_count}<span style={{ fontSize: 15, fontWeight: 400, color: 'var(--pencil)' }}> / {club.member_count}</span></b><span className="eyebrow">rated it</span></div>
           <div><b>{book.discussed_topic_count}</b><span className="eyebrow">talked about</span></div>
           <div><b>{book.quote_count}</b><span className="eyebrow">lines kept</span></div>
         </div>
@@ -107,7 +107,6 @@ function Ratings({ clubId, bookId, mine, average, ratings, me, memberCount, onCh
 }) {
   const act = useAction();
   const value = mine ?? 0;
-  const others = ratings.filter((r) => r.user_id !== me);
 
   async function pick(star: number) {
     // Tapping the star you're already on knocks off half a star.
@@ -123,11 +122,11 @@ function Ratings({ clubId, bookId, mine, average, ratings, me, memberCount, onCh
 
   return (
     <section className="stack" aria-labelledby="ratings-h" style={{ gap: 0 }}>
-      <div className="spread" style={{ alignItems: 'baseline', paddingBottom: 10 }}>
+      <div className="row" style={{ alignItems: 'baseline', gap: 12, paddingBottom: 10 }}>
         <h2 id="ratings-h">everyone’s <em>ratings</em></h2>
-        <span className="meta tabular">
-          {average != null ? <>average <b style={{ color: 'var(--ink)' }}>{average}</b> · </> : null}
-          {ratings.length} of {memberCount} rated
+        <span className="tabular" style={{ fontFamily: 'var(--serif)', fontWeight: 700, fontSize: 21, color: 'var(--mood)' }}
+              aria-label={average != null ? `Average ${average} out of 5` : 'No ratings yet'}>
+          {average ?? '—'}
         </span>
       </div>
 
@@ -151,22 +150,6 @@ function Ratings({ clubId, bookId, mine, average, ratings, me, memberCount, onCh
         </div>
         </span>
       </div>
-
-      {others.map((r) => (
-        <div key={r.user_id} className="spread" style={{ borderTop: '1px solid var(--rule)', padding: '10px 0' }}>
-          <span>{r.display_name ?? 'A member'}</span>
-          <span className="row" style={{ gap: 8 }}>
-            <span className="meta tabular">{r.stars}</span>
-            <span className="stars" role="img" aria-label={`${r.stars} out of 5 stars`} style={{ color: 'var(--mood)' }}>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <span key={n} style={{ width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <StarIcon n={n} value={r.stars} size={22} />
-                </span>
-              ))}
-            </span>
-          </span>
-        </div>
-      ))}
       <Notice error>{act.error}</Notice>
     </section>
   );
