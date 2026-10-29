@@ -22,11 +22,11 @@ export function Welcome() {
 
   return (
     <>
-      <SketchHero height={560} background />
+      <SketchHero height={520} background />
       <div className="page no-tabs">
         <h1 className="motto">
           <span className="motto-lead">meet me in the</span>
-          <span className="motto-logo"><Logo width={200} /></span>
+          <span className="motto-logo"><Logo width={224} /></span>
         </h1>
         {sentTo ? (
           <div className="stack">

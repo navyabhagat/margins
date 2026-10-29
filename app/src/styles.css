@@ -420,3 +420,13 @@ details[open] > summary::before { content: "– "; }
 .motto-logo { justify-self: end; margin-top: -6px; margin-right: 4px; transform: rotate(1deg); }
 .motto-logo .logo { filter: drop-shadow(0 0 6px #fff) drop-shadow(0 0 10px #fff); }
 h2.marker-title { font-size: 40px; }
+
+/* Sign-in, refined: more room for the drawing, bigger blanks and button */
+.sketch-hero.as-background img { object-position: center 30%; }
+.sketch-hero.as-background + .page { margin-top: -240px; gap: 34px; }
+.motto-lead { font-size: 56px; }
+.motto-logo { margin-top: 2px; margin-right: 0; }
+.fill-in { font-size: 31px; line-height: 1.7; }
+.fill-in .blank { font-size: 31px; }
+.fill-in .blank.wide { margin-top: 4px; }
+.tape-btn { font-size: 32px; padding: 14px 34px 9px; margin-top: 24px; min-height: 56px; }
