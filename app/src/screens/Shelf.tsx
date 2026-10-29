@@ -67,7 +67,7 @@ function ShelfRow({ book, cover, clubId }: { book: BookOverview; cover: string |
   const detail = book.status === 'current'
     ? `${book.open_topic_count} on the table`
     : book.status === 'finished'
-      ? [book.avg_rating != null && `${book.avg_rating}★`, book.photo_count > 0 && `${book.photo_count} photos`, book.quote_count > 0 && `${book.quote_count} lines`].filter(Boolean).join(' · ') || 'finished'
+      ? [book.avg_rating != null && `${book.avg_rating}★`, book.quote_count > 0 && `${book.quote_count} lines`].filter(Boolean).join(' · ') || 'finished'
       : 'coming up';
   return (
     <Link to={`/club/${clubId}/book/${book.id}`} className="list-link" style={style}>

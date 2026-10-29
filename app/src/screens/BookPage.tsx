@@ -1,6 +1,5 @@
 import { useState, type CSSProperties, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import type { Photo } from '@margins';
 import { margins } from '../lib/margins';
 import { useAction, useLoad } from '../lib/hooks';
 import { meetingDay, monthName } from '../lib/format';
@@ -15,7 +14,7 @@ export function BookPage() {
 
   if (loading && !data) return <Loading />;
   if (error) return <div className="page"><Notice error>{error}</Notice></div>;
-  const { book, topics, quotes, notes, photos, ratings } = data!;
+  const { book, topics, quotes, photos, ratings } = data!;
   const cover = photos.find((p) => p.is_cover) ?? photos[0];
   const discussed = topics.filter((t) => t.status === 'discussed');
   const style = { '--mood': book.mood_color ?? '#8a4a2e' } as CSSProperties;
@@ -30,7 +29,7 @@ export function BookPage() {
                        alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,.9)' }}>
           <BackArrow />
         </Link>
-        <span className="tape" style={{ position: 'absolute', right: 14, bottom: 4, zIndex: 4, transform: 'rotate(-3deg)' }}>
+        <span className="tape" style={{ position: 'absolute', right: 14, top: 28, zIndex: 4, transform: 'rotate(-3deg)' }}>
           {monthName(book.month).toLowerCase()} · {statusLabel}
         </span>
       </div>
@@ -47,7 +46,7 @@ export function BookPage() {
         <div className="stats">
           <div><b>{book.avg_rating ?? '—'}</b><span className="eyebrow">average rating</span></div>
           <div><b>{book.discussed_topic_count}</b><span className="eyebrow">talked about</span></div>
-          <div><b>{book.photo_count}</b><span className="eyebrow">photos</span></div>
+          <div><b>{book.quote_count}</b><span className="eyebrow">lines kept</span></div>
         </div>
 
         {book.status !== 'upcoming' && (
@@ -71,9 +70,7 @@ export function BookPage() {
           )}
         </section>
 
-        <Notes clubId={club.id} bookId={book.id} notes={notes} me={me} isAdmin={isAdmin} onChange={reload} />
         <Quotes clubId={club.id} bookId={book.id} quotes={quotes} me={me} isAdmin={isAdmin} onChange={reload} />
-        <Photos clubId={club.id} bookId={book.id} photos={photos} me={me} isAdmin={isAdmin} onChange={reload} />
       </div>
     </div>
   );
@@ -172,48 +169,6 @@ function Ratings({ clubId, bookId, mine, average, ratings, me, memberCount, onCh
 
 type SectionProps = { clubId: string; bookId: string; me: string; isAdmin: boolean; onChange: () => Promise<void> };
 
-function Notes({ notes, ...p }: SectionProps & { notes: { id: string; body: string; author_id: string | null; created_at: string }[] }) {
-  const [body, setBody] = useState('');
-  const act = useAction();
-
-  async function add(e: FormEvent) {
-    e.preventDefault();
-    const ok = await act.run(() => margins.addMeetingNote(p.clubId, p.bookId, body));
-    if (ok) { setBody(''); await p.onChange(); }
-  }
-  async function remove(id: string) {
-    const ok = await act.run(async () => { await margins.deleteMeetingNote(id); return true; });
-    if (ok) await p.onChange();
-  }
-
-  return (
-    <section className="stack" aria-labelledby="notes-h">
-      <h2 id="notes-h">meeting <em>notes</em></h2>
-      {notes.length === 0 && <p className="meta">How did the meeting go? Write it down so the shelf remembers.</p>}
-      {notes.map((n) => (
-        <div key={n.id} className="stack" style={{ gap: 2 }}>
-          <p className="hand" style={{ whiteSpace: 'pre-line' }}>{n.body}</p>
-          {(n.author_id === p.me || p.isAdmin) && (
-            <button className="btn quiet" type="button" style={{ alignSelf: 'flex-end' }} onClick={() => remove(n.id)}>Remove</button>
-          )}
-        </div>
-      ))}
-      <details>
-        <summary>Add a note</summary>
-        <form className="form" onSubmit={add} style={{ marginTop: 12 }}>
-          <label className="field">
-            <span>Note</span>
-            <textarea id="note-body" className="input handwritten" required maxLength={4000} value={body}
-                      placeholder="What we argued about, who changed their mind…" onChange={(e) => setBody(e.target.value)} />
-          </label>
-          <button className="btn small" type="submit" disabled={act.busy} style={{ alignSelf: 'flex-start' }}>Save note</button>
-        </form>
-      </details>
-      <Notice error>{act.error}</Notice>
-    </section>
-  );
-}
-
 function Quotes({ quotes, ...p }: SectionProps & { quotes: { id: string; body: string; page: number | null; speaker: string | null; added_by: string | null }[] }) {
   const [body, setBody] = useState('');
   const [page, setPage] = useState('');
@@ -265,74 +220,3 @@ function Quotes({ quotes, ...p }: SectionProps & { quotes: { id: string; body: s
   );
 }
 
-function Photos({ photos, ...p }: SectionProps & { photos: Photo[] }) {
-  const [file, setFile] = useState<File | null>(null);
-  const [caption, setCaption] = useState('');
-  const [isCover, setIsCover] = useState(photos.length === 0);
-  const [inputKey, setInputKey] = useState(0);
-  const act = useAction();
-
-  async function upload(e: FormEvent) {
-    e.preventDefault();
-    if (!file) return;
-    const ok = await act.run(() => margins.uploadPhoto(p.clubId, p.bookId, file,
-      { caption: caption.trim() || undefined, isCover }));
-    if (ok) { setFile(null); setCaption(''); setIsCover(false); setInputKey((k) => k + 1); await p.onChange(); }
-  }
-  async function makeCover(photo: Photo) {
-    const ok = await act.run(async () => {
-      const current = photos.find((x) => x.is_cover);
-      if (current) await margins.updatePhoto(current.id, { is_cover: false });
-      await margins.updatePhoto(photo.id, { is_cover: true });
-      return true;
-    });
-    if (ok) await p.onChange();
-  }
-  async function remove(photo: Photo) {
-    const ok = await act.run(async () => { await margins.deletePhoto(photo); return true; });
-    if (ok) await p.onChange();
-  }
-
-  return (
-    <section className="stack" aria-labelledby="photos-h">
-      <h2 id="photos-h"><em>photos</em></h2>
-      {photos.length > 0 && (
-        <div className="photo-grid">
-          {photos.map((ph) => (
-            <figure key={ph.id}>
-              <FilmPhoto src={ph.url} alt={ph.caption ?? 'Club photo'} subtitle={ph.caption} letterbox={false} />
-              {(ph.uploaded_by === p.me || p.isAdmin) && (
-                <div className="row" style={{ gap: 2, flexWrap: 'wrap' }}>
-                  {ph.is_cover ? <span className="eyebrow mood">cover</span>
-                    : <button className="btn quiet" type="button" onClick={() => makeCover(ph)}>Make cover</button>}
-                  <button className="btn quiet" type="button" onClick={() => remove(ph)}>Remove</button>
-                </div>
-              )}
-            </figure>
-          ))}
-        </div>
-      )}
-      <details open={photos.length === 0}>
-        <summary>Add a photo</summary>
-        <form className="form" onSubmit={upload} style={{ marginTop: 12 }}>
-          <label className="field">
-            <span>Photo</span>
-            <input key={inputKey} id="photo-file" type="file" accept="image/jpeg,image/png,image/webp,image/heic" required
-                   onChange={(e) => setFile(e.target.files?.[0] ?? null)} style={{ fontFamily: 'var(--sans)', fontSize: 14 }} />
-          </label>
-          <label className="field"><span>Caption (shows in yellow over the photo)</span>
-            <input id="photo-caption" className="input" maxLength={300} placeholder="fog rolling over the lake"
-                   value={caption} onChange={(e) => setCaption(e.target.value)} /></label>
-          <label className="row" style={{ fontFamily: 'var(--sans)', fontSize: 14 }}>
-            <input id="photo-cover" type="checkbox" checked={isCover} onChange={(e) => setIsCover(e.target.checked)} />
-            Use as this book’s cover
-          </label>
-          <button className="btn small" type="submit" disabled={act.busy || !file} style={{ alignSelf: 'flex-start' }}>
-            {act.busy ? 'Uploading…' : 'Upload photo'}
-          </button>
-        </form>
-      </details>
-      <Notice error>{act.error}</Notice>
-    </section>
-  );
-}
