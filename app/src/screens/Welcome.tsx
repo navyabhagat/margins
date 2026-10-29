@@ -35,19 +35,21 @@ export function Welcome() {
         ) : (
           <>
             <h1 className="marker-title">find your table</h1>
-            <form className="form" onSubmit={submit}>
-              <label className="field">
-                <span>Email</span>
-                <input id="signin-email" className="input" type="email" required autoComplete="email"
-                       placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-              </label>
-              <label className="field">
-                <span>Your name (first time only)</span>
-                <input id="signin-name" className="input" autoComplete="given-name" maxLength={60}
-                       placeholder="What the club calls you" value={name} onChange={(e) => setName(e.target.value)} />
-              </label>
+            <form className="fill-in" onSubmit={submit}>
+              <p className="fill-in-line">
+                Hi, I’m{' '}
+                <label className="sr-only" htmlFor="signin-name">Your name (first time only)</label>
+                <input id="signin-name" className="blank" autoComplete="given-name" maxLength={60}
+                       placeholder="your name" value={name} onChange={(e) => setName(e.target.value)}
+                       size={Math.max(8, name.length + 1)} />.
+              </p>
+              <p className="fill-in-line">
+                <label htmlFor="signin-email">Send my link to</label>
+                <input id="signin-email" className="blank wide" type="email" required autoComplete="email"
+                       inputMode="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </p>
               <Notice error>{error}</Notice>
-              <button className="btn" type="submit" disabled={busy}>{busy ? 'Sending…' : 'Email me a sign-in link'}</button>
+              <button className="tape-btn" type="submit" disabled={busy}>{busy ? 'sending…' : 'send it →'}</button>
             </form>
           </>
         )}

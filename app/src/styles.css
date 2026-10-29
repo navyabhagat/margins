@@ -389,3 +389,26 @@ details[open] > summary::before { content: "– "; }
 .sketch-hero.as-background + .page h1 { text-shadow: 0 0 10px #fff, 0 0 18px #fff, 0 0 26px #fff; }
 .sketch-hero.as-background + .page .hand { text-shadow: 0 0 6px #fff, 0 0 12px #fff; }
 .marker-title { font-family: var(--marker); font-weight: 400; font-size: 52px; line-height: .95; text-transform: none; }
+
+/* Sign-in as a sentence you finish in marker */
+.fill-in { display: flex; flex-direction: column; gap: 6px; font-family: var(--marker); font-size: 32px; line-height: 1.5; color: var(--ink); }
+.fill-in-line { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; }
+.fill-in-line label { font: inherit; }
+.fill-in .blank {
+  font: inherit; font-size: 30px; color: var(--ink); background: transparent; border: 0; border-bottom: 2px solid var(--pencil);
+  padding: 0 6px; line-height: 1.15; min-width: 0; border-radius: 0;
+}
+.fill-in .blank.wide { flex: 1 1 100%; }
+.fill-in .blank::placeholder { color: #a39f96; }
+.fill-in .blank:focus { outline: none; border-bottom-color: var(--brand); background: color-mix(in srgb, var(--tape) 35%, transparent); }
+.fill-in .notice { font-size: 14px; line-height: 1.45; }
+.tape-btn {
+  align-self: flex-start; margin-top: 18px; border: 0; cursor: pointer; min-height: 48px;
+  background: color-mix(in srgb, var(--brand) 30%, var(--tape)); color: var(--ink);
+  font-family: var(--marker); font-size: 30px; line-height: 1; padding: 12px 28px 8px; transform: rotate(-2deg);
+  clip-path: polygon(3% 0, 30% 3%, 62% 0, 97% 2%, 100% 18%, 97% 36%, 100% 54%, 96% 72%, 99% 90%, 95% 100%, 64% 97%, 33% 100%, 4% 98%, 0 82%, 3% 64%, 0 46%, 4% 28%, 1% 10%);
+  transition: transform .15s ease, background .15s ease;
+}
+.tape-btn:hover { background: color-mix(in srgb, var(--brand) 42%, var(--tape)); transform: rotate(-1deg) translateY(-1px); }
+.tape-btn:disabled { opacity: .6; cursor: default; }
+.tape-btn:focus-visible { outline: 2px dashed var(--brand); outline-offset: 4px; }
