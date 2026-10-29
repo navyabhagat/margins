@@ -377,3 +377,15 @@ details[open] > summary::before { content: "– "; }
   position: absolute; left: 16px; right: 16px; bottom: 6px; margin: 0; text-align: center;
   font-family: var(--hand); font-size: 18px; color: var(--pencil);
 }
+
+/* Sign-in: the sketch runs behind the logo and heading, paling toward the form */
+.sketch-hero.as-background img {
+  object-position: center 30%;
+  -webkit-mask-image: linear-gradient(to bottom, #000 32%, rgba(0,0,0,.35) 62%, transparent 92%), linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(to bottom, #000 32%, rgba(0,0,0,.35) 62%, transparent 92%), linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+}
+.sketch-hero.as-background + .page { margin-top: -250px; position: relative; background: transparent; }
+.sketch-hero.as-background + .page .logo { filter: drop-shadow(0 0 6px #fff) drop-shadow(0 0 10px #fff); }
+.sketch-hero.as-background + .page h1 { text-shadow: 0 0 10px #fff, 0 0 18px #fff, 0 0 26px #fff; }
+.sketch-hero.as-background + .page .hand { text-shadow: 0 0 6px #fff, 0 0 12px #fff; }
+.marker-title { font-family: var(--marker); font-weight: 400; font-size: 52px; line-height: .95; text-transform: none; }
