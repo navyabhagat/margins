@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { margins } from '../lib/margins';
 import { useAction } from '../lib/hooks';
-import { FilmPhoto, Logo, Notice } from '../components/bits';
+import { Logo, Notice, SketchHero } from '../components/bits';
 
 /** Signed-out front door: sign in with a link sent by email. */
 export function Welcome() {
@@ -22,8 +22,7 @@ export function Welcome() {
 
   return (
     <>
-      <FilmPhoto src={`${import.meta.env.BASE_URL}opening.jpg`} alt="A corner of a record and book shop with a bookshelf and a piano"
-                 subtitle="one book a month, around a long table" height={290} />
+      <SketchHero height={290} />
       <div className="page no-tabs">
         <Logo width={180} />
         {sentTo ? (

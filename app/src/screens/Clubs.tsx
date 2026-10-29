@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { margins } from '../lib/margins';
 import { useAction, useLoad } from '../lib/hooks';
 import { meetingDay } from '../lib/format';
-import { Chevron, FilmPhoto, Loading, Logo, Notice } from '../components/bits';
+import { Chevron, Loading, Logo, Notice, SketchHero } from '../components/bits';
 
 /** Signed in: your clubs, join with a code, or start a new club. */
 export function Clubs() {
@@ -30,8 +30,7 @@ export function Clubs() {
 
   return (
     <>
-      <FilmPhoto src={`${import.meta.env.BASE_URL}opening.jpg`} alt="A corner of a record and book shop with a bookshelf and a piano"
-                 subtitle="one book a month, around a long table" height={230} />
+      <SketchHero height={230} />
       <div className="page no-tabs">
         <div className="spread">
           <Logo width={150} />

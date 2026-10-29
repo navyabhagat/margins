@@ -49,6 +49,17 @@ export function FilmPhoto({ src, alt, subtitle, height, letterbox = true, taped,
   );
 }
 
+/** The sign-in and club-list opener: a faded, colored pencil sketch of the record shop. */
+export function SketchHero({ height }: { height: number }) {
+  return (
+    <div className="sketch-hero" style={{ height }}>
+      <img src={`${import.meta.env.BASE_URL}opening-sketch.jpg`}
+           alt="A pencil sketch of a record and book shop, with a bookshelf, a piano and stacks of CDs" />
+      <p className="sketch-caption">one book a month, around a long table</p>
+    </div>
+  );
+}
+
 export function Chevron() {
   return (
     <svg className="chev" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none"
