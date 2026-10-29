@@ -316,8 +316,20 @@ begin
                     from public.book_overview where id = tests.unknown_book()),
                    'the overview averages ratings and shows mine');
 
-  insert into public.rsvps (club_id, book_id, status) values (tests.club(), tests.recursion_book(), 'going')
-  on conflict (book_id, user_id) do update set status = excluded.status;
+  -- How the app saves an answer: update just the status, insert if there's none yet.
+  update public.rsvps set status = 'going' where book_id = tests.recursion_book() and user_id = tests.maya();
+  perform tests.ok(found, 'a member can change their own RSVP');
+  update public.ratings set stars = 5 where book_id = tests.unknown_book() and user_id = tests.maya();
+  perform tests.ok(found, 'a member can change their own rating');
+  update public.ratings set stars = 4 where book_id = tests.unknown_book() and user_id = tests.maya();
+  begin
+    -- A blanket upsert also rewrites book_id and club_id, which members may not change.
+    insert into public.rsvps (club_id, book_id, status) values (tests.club(), tests.recursion_book(), 'maybe')
+    on conflict (book_id, user_id) do update set club_id = excluded.club_id, book_id = excluded.book_id, status = excluded.status;
+    perform tests.ok(false, 'members cannot move an RSVP to another book');
+  exception when insufficient_privilege then
+    perform tests.ok(true, 'members cannot move an RSVP to another book');
+  end;
   perform tests.ok((select going_count = 2 and my_rsvp = 'going'
                     from public.book_overview where id = tests.recursion_book()),
                    'RSVPs count toward who''s coming');

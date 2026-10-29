@@ -195,8 +195,7 @@ export class MarginsApi {
   }
 
   async rsvp(clubId: string, bookId: string, status: RsvpStatus) {
-    unwrap(await this.supabase.from('rsvps')
-      .upsert({ club_id: clubId, book_id: bookId, status }, { onConflict: 'book_id,user_id' }));
+    await this.saveMine('rsvps', clubId, bookId, { status });
   }
 
   /** Rate a book from 0.5 to 5 stars, in half stars. */
@@ -204,8 +203,7 @@ export class MarginsApi {
     if (stars < 0.5 || stars > 5 || stars * 2 !== Math.floor(stars * 2)) {
       throw new MarginsError('Ratings go from half a star to 5 stars, in half stars.');
     }
-    unwrap(await this.supabase.from('ratings')
-      .upsert({ club_id: clubId, book_id: bookId, stars }, { onConflict: 'book_id,user_id' }));
+    await this.saveMine('ratings', clubId, bookId, { stars });
   }
 
   /** Take back your rating. */
@@ -360,6 +358,26 @@ export class MarginsApi {
   }
 
   // ---------------------------------------------------------------- helpers
+
+  /**
+   * Save your own RSVP or rating for a book. Updates only the value you can
+   * change (an upsert would also try to rewrite the book and club, which the
+   * database rightly refuses), and adds a row the first time.
+   */
+  private async saveMine(table: 'rsvps' | 'ratings', clubId: string, bookId: string,
+                         values: { status: RsvpStatus } | { stars: number }) {
+    const user = await this.requireUser();
+    const updated = unwrap(await this.supabase.from(table).update(values)
+      .eq('book_id', bookId).eq('user_id', user).select('book_id')) as unknown[];
+    if (updated.length > 0) return;
+    const { error } = await this.supabase.from(table).insert({ club_id: clubId, book_id: bookId, ...values });
+    if (error?.code === '23505') {
+      // Saved from another tab a moment ago; update that one instead.
+      unwrap(await this.supabase.from(table).update(values).eq('book_id', bookId).eq('user_id', user));
+      return;
+    }
+    unwrap({ error });
+  }
 
   private async requireUser(): Promise<string> {
     const { data } = await this.supabase.auth.getUser();
