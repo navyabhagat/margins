@@ -122,43 +122,48 @@ function Ratings({ clubId, bookId, mine, average, ratings, me, memberCount, onCh
   }
 
   return (
-    <section className="stack" aria-labelledby="ratings-h">
-      <h2 id="ratings-h">everyone’s <em>ratings</em></h2>
-
-      <div className="spread">
-        <div className="stack" style={{ gap: 2 }}>
-          <span className="eyebrow">average</span>
-          <span className="meta">{ratings.length} of {memberCount} rated</span>
-        </div>
-        <div className="row" style={{ gap: 10 }}>
-          <b style={{ fontSize: 26 }} className="tabular">{average ?? '—'}</b>
-          <Stars value={average ?? 0} size={20} label={average ? `Average ${average} out of 5` : 'No ratings yet'} />
-        </div>
+    <section className="stack" aria-labelledby="ratings-h" style={{ gap: 0 }}>
+      <div className="spread" style={{ alignItems: 'baseline', paddingBottom: 10 }}>
+        <h2 id="ratings-h">everyone’s <em>ratings</em></h2>
+        <span className="meta tabular">
+          {average != null ? <>average <b style={{ color: 'var(--ink)' }}>{average}</b> · </> : null}
+          {ratings.length} of {memberCount} rated
+        </span>
       </div>
 
-      <div className="spread" style={{ borderTop: '1px solid var(--rule)', paddingTop: 12 }}>
-        <div className="stack" style={{ gap: 2 }}>
+      <div className="spread" style={{ borderTop: '1px solid var(--rule)', padding: '10px 0' }}>
+        <div className="stack" style={{ gap: 0 }}>
           <span style={{ fontWeight: 700 }}>You</span>
-          <span className="meta">
-            {mine ? `${mine} ${mine === 1 ? 'star' : 'stars'}` : 'Tap to rate. Tap again for half.'}
-            {mine && <> · <button className="link" type="button" onClick={clear} style={{ fontSize: 13 }}>clear</button></>}
+          <span className="meta" style={{ fontSize: 13 }}>
+            {mine ? <button className="link" type="button" onClick={clear} style={{ fontSize: 13 }}>clear</button>
+              : 'tap to rate, again for half'}
           </span>
         </div>
+        <span className="row" style={{ gap: 8 }}>
+        {mine != null && <span className="meta tabular">{mine}</span>}
         <div className="stars" role="group" aria-label="Your rating">
           {[1, 2, 3, 4, 5].map((s) => (
-            <button key={s} type="button" aria-label={`Rate ${s} ${s === 1 ? 'star' : 'stars'}`} disabled={act.busy} onClick={() => pick(s)}>
-              <StarIcon n={s} value={value} size={26} />
+            <button key={s} type="button" aria-label={`Rate ${s} ${s === 1 ? 'star' : 'stars'}`} disabled={act.busy} onClick={() => pick(s)}
+                    style={{ width: 32, height: 32 }}>
+              <StarIcon n={s} value={value} size={22} />
             </button>
           ))}
         </div>
+        </span>
       </div>
 
       {others.map((r) => (
-        <div key={r.user_id} className="spread" style={{ borderTop: '1px solid var(--rule)', paddingTop: 10 }}>
+        <div key={r.user_id} className="spread" style={{ borderTop: '1px solid var(--rule)', padding: '10px 0' }}>
           <span>{r.display_name ?? 'A member'}</span>
           <span className="row" style={{ gap: 8 }}>
             <span className="meta tabular">{r.stars}</span>
-            <Stars value={r.stars} size={18} />
+            <span className="stars" role="img" aria-label={`${r.stars} out of 5 stars`} style={{ color: 'var(--mood)' }}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <span key={n} style={{ width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <StarIcon n={n} value={r.stars} size={22} />
+                </span>
+              ))}
+            </span>
           </span>
         </div>
       ))}
