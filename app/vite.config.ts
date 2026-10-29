@@ -21,6 +21,8 @@ export default defineConfig(({ mode }) => {
   const env = { ...exampleEnv(), ...loadEnv(mode, root, 'VITE_') };
   return {
     plugins: [react()],
+    // '/' locally; '/margins/' when published to GitHub Pages (set by the deploy workflow).
+    base: process.env.MARGINS_BASE ?? '/',
     // Read VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY from .env at the repo root,
     // falling back to .env.example.
     envDir: '..',

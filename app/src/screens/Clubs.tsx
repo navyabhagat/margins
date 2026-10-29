@@ -30,7 +30,7 @@ export function Clubs() {
 
   return (
     <>
-      <FilmPhoto src="/opening.jpg" alt="A corner of a record and book shop with a bookshelf and a piano"
+      <FilmPhoto src={`${import.meta.env.BASE_URL}opening.jpg`} alt="A corner of a record and book shop with a bookshelf and a piano"
                  subtitle="one book a month, around a long table" height={230} />
       <div className="page no-tabs">
         <div className="spread">

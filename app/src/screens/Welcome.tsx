@@ -14,7 +14,7 @@ export function Welcome() {
     e.preventDefault();
     const address = email.trim();
     const ok = await run(async () => {
-      await margins.signInWithEmail(address, name.trim() || undefined, window.location.origin);
+      await margins.signInWithEmail(address, name.trim() || undefined, window.location.origin + import.meta.env.BASE_URL);
       return true;
     });
     if (ok) setSentTo(address);
@@ -22,7 +22,7 @@ export function Welcome() {
 
   return (
     <>
-      <FilmPhoto src="/opening.jpg" alt="A corner of a record and book shop with a bookshelf and a piano"
+      <FilmPhoto src={`${import.meta.env.BASE_URL}opening.jpg`} alt="A corner of a record and book shop with a bookshelf and a piano"
                  subtitle="one book a month, around a long table" height={290} />
       <div className="page no-tabs">
         <Logo width={180} />
