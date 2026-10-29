@@ -412,3 +412,11 @@ details[open] > summary::before { content: "– "; }
 .tape-btn:hover { background: color-mix(in srgb, var(--brand) 42%, var(--tape)); transform: rotate(-1deg) translateY(-1px); }
 .tape-btn:disabled { opacity: .6; cursor: default; }
 .tape-btn:focus-visible { outline: 2px dashed var(--brand); outline-offset: 4px; }
+
+/* Motto: "meet me in the" on the left, the margins logo staggered lower on the right */
+.motto { margin: 0; display: grid; grid-template-columns: 1fr; font-family: var(--marker); font-weight: 400;
+         text-transform: none; line-height: .9; color: var(--ink); }
+.motto-lead { justify-self: start; font-size: 50px; transform: rotate(-1.5deg); text-shadow: 0 0 10px #fff, 0 0 18px #fff, 0 0 26px #fff; }
+.motto-logo { justify-self: end; margin-top: -6px; margin-right: 4px; transform: rotate(1deg); }
+.motto-logo .logo { filter: drop-shadow(0 0 6px #fff) drop-shadow(0 0 10px #fff); }
+h2.marker-title { font-size: 40px; }

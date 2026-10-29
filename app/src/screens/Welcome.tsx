@@ -24,17 +24,19 @@ export function Welcome() {
     <>
       <SketchHero height={560} background />
       <div className="page no-tabs">
-        <Logo width={180} />
+        <h1 className="motto">
+          <span className="motto-lead">meet me in the</span>
+          <span className="motto-logo"><Logo width={200} /></span>
+        </h1>
         {sentTo ? (
           <div className="stack">
-            <h1 className="marker-title">check your email</h1>
+            <h2 className="marker-title">check your email</h2>
             <p className="hand">We sent a sign-in link to {sentTo}. Open it on this device and you’ll land back here, signed in.</p>
             <p className="meta">Nothing yet? Check spam, or wait a minute and try again.</p>
             <button className="link" type="button" onClick={() => setSentTo(null)}>Use a different email</button>
           </div>
         ) : (
           <>
-            <h1 className="marker-title">find your table</h1>
             <form className="fill-in" onSubmit={submit}>
               <p className="fill-in-line">
                 Hi, I’m{' '}
