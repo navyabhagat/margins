@@ -25,10 +25,15 @@ const AUTH_MESSAGES: Record<string, string> = {
   email_provider_disabled: 'Email sign-in is turned off for this app (Supabase → Authentication → Providers → Email).',
   signup_disabled: 'New sign-ups are turned off for this app (Supabase → Authentication → Sign In / Providers).',
   otp_expired: 'That sign-in link has expired. Ask for a new one.',
+  invalid_credentials: 'That email and password don’t match. If you’ve never set a password, use “email me a link” once, then set one from your clubs page.',
+  email_not_confirmed: 'Open the sign-in link we emailed you once first, then your password will work.',
+  weak_password: 'Pick a longer password: at least 8 characters.',
+  same_password: 'That’s already your password.',
+  reauthentication_needed: 'For safety, sign in with an emailed link first, then set your password.',
 };
 
 function unwrap<T>({ data, error }: Result<T>, fallback = 'Something went wrong. Try again.'): T {
-  if (error && (error.name?.startsWith('Auth') || error.status)) {
+  if (error && error.name?.startsWith('Auth')) {
     // Auth errors: say what actually happened instead of a generic message.
     const msg = AUTH_MESSAGES[error.code ?? ''] ??
       (error.status === 429 ? AUTH_MESSAGES.over_email_send_rate_limit : error.message || fallback);
@@ -71,6 +76,19 @@ export class MarginsApi {
       email,
       options: { emailRedirectTo: redirectTo, data: displayName ? { display_name: displayName } : undefined },
     }));
+  }
+
+  /** Returning readers who have set a password: no email needed. */
+  async signInWithPassword(email: string, password: string) {
+    const { error } = await this.supabase.auth.signInWithPassword({ email: email.trim(), password });
+    unwrap({ error });
+  }
+
+  /** Sets (or changes) the password for the signed-in reader. */
+  async setPassword(password: string) {
+    if (password.length < 8) throw new MarginsError('Pick a longer password: at least 8 characters.');
+    const { error } = await this.supabase.auth.updateUser({ password });
+    unwrap({ error });
   }
 
   async signOut() {

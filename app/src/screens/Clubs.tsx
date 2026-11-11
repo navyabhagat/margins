@@ -85,7 +85,42 @@ export function Clubs() {
           </form>
           <Notice error>{create.error}</Notice>
         </details>
+
+        <SignInPassword />
       </div>
     </>
+  );
+}
+
+/** Lets a reader set a password so they can sign in without an emailed link. */
+function SignInPassword() {
+  const [password, setPassword] = useState('');
+  const [done, setDone] = useState(false);
+  const save = useAction();
+
+  async function onSave(e: FormEvent) {
+    e.preventDefault();
+    const ok = await save.run(async () => { await margins.setPassword(password); return true; });
+    if (ok) { setPassword(''); setDone(true); }
+  }
+
+  return (
+    <details>
+      <summary>Sign-in password</summary>
+      <p className="meta" style={{ marginTop: 10 }}>
+        Set a password to sign in without waiting for an email, on any device.
+      </p>
+      <form className="inline-form" onSubmit={onSave} style={{ marginTop: 10 }}>
+        <label className="field">
+          <span>New password</span>
+          <input id="new-password" className="input" type="password" required minLength={8} autoComplete="new-password"
+                 placeholder="at least 8 characters" value={password}
+                 onChange={(e) => { setPassword(e.target.value); setDone(false); }} />
+        </label>
+        <button className="btn" type="submit" disabled={save.busy}>{save.busy ? 'Saving…' : 'Save password'}</button>
+      </form>
+      {done && <p className="hand" style={{ marginTop: 8 }}>Saved. Next time, choose “sign in with your password.”</p>}
+      <Notice error>{save.error}</Notice>
+    </details>
   );
 }

@@ -401,6 +401,7 @@ details[open] > summary::before { content: "– "; }
 .fill-in .blank.wide { flex: 1 1 100%; }
 .fill-in .blank::placeholder { color: #a39f96; }
 .fill-in .blank:focus { outline: none; border-bottom-color: var(--brand); background: color-mix(in srgb, var(--tape) 35%, transparent); }
+.fill-in .link { font-family: var(--sans); font-size: 14px; line-height: 1.4; align-self: flex-start; margin-top: 4px; }
 .fill-in .notice { font-size: 14px; line-height: 1.45; }
 .tape-btn {
   align-self: flex-start; margin-top: 18px; border: 0; cursor: pointer; min-height: 48px;
