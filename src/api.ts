@@ -15,9 +15,25 @@ export class MarginsError extends Error {
   }
 }
 
-type Result<T> = { data?: T | null; error: { message: string; code?: string } | null };
+type Result<T> = { data?: T | null; error: { message: string; code?: string; name?: string; status?: number } | null };
+
+/** Sign-in errors from Supabase Auth, in plain words. */
+const AUTH_MESSAGES: Record<string, string> = {
+  over_email_send_rate_limit: 'Too many sign-in emails were sent in the last hour. Wait a bit and try again, or use the most recent link in your inbox.',
+  over_request_rate_limit: 'Please wait a minute before asking for another link.',
+  email_address_invalid: 'That email address doesn’t look right.',
+  email_provider_disabled: 'Email sign-in is turned off for this app (Supabase → Authentication → Providers → Email).',
+  signup_disabled: 'New sign-ups are turned off for this app (Supabase → Authentication → Sign In / Providers).',
+  otp_expired: 'That sign-in link has expired. Ask for a new one.',
+};
 
 function unwrap<T>({ data, error }: Result<T>, fallback = 'Something went wrong. Try again.'): T {
+  if (error && (error.name?.startsWith('Auth') || error.status)) {
+    // Auth errors: say what actually happened instead of a generic message.
+    const msg = AUTH_MESSAGES[error.code ?? ''] ??
+      (error.status === 429 ? AUTH_MESSAGES.over_email_send_rate_limit : error.message || fallback);
+    throw new MarginsError(msg, error.code, error);
+  }
   if (error) {
     const friendly: Record<string, string> = {
       '42501': "You don't have permission to do that in this club.",
