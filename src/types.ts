@@ -5,6 +5,29 @@ export type MemberRole = 'owner' | 'admin' | 'member';
 export type BookStatus = 'upcoming' | 'current' | 'finished';
 export type TopicStatus = 'open' | 'discussed';
 export type RsvpStatus = 'going' | 'maybe' | 'not_going';
+export type MeetFrequency = 'weekly' | 'biweekly' | 'monthly';
+
+/** How often a club meets. Times are in the club's time zone. */
+export interface MeetingSchedule {
+  meet_frequency: MeetFrequency | null;
+  /** 0 = Sunday … 6 = Saturday */
+  meet_weekday: number | null;
+  /** Monthly only: 1–4, or -1 for the last week. */
+  meet_week_of_month: number | null;
+  /** "19:00:00" */
+  meet_time: string | null;
+  meet_timezone: string;
+  /** Every other week only: one date the club meets, "2026-11-03". */
+  meet_anchor: string | null;
+  meet_place: string | null;
+}
+
+export interface MeetingRsvp {
+  club_id: string;
+  meeting_on: string;
+  user_id: string;
+  status: RsvpStatus;
+}
 
 export interface Profile {
   id: string;
@@ -22,7 +45,7 @@ export interface Club {
 }
 
 /** A row from the `my_clubs` view: a club plus your place in it. */
-export interface MyClub {
+export interface MyClub extends MeetingSchedule {
   id: string;
   name: string;
   description: string | null;
@@ -33,6 +56,8 @@ export interface MyClub {
   current_book_id: string | null;
   current_book_title: string | null;
   current_meeting_at: string | null;
+  /** The next meeting from the club's regular schedule, if it has one. */
+  next_meeting_at: string | null;
 }
 
 export interface Member {

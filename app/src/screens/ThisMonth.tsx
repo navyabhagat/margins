@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import type { RsvpStatus } from '@margins';
 import { margins } from '../lib/margins';
 import { useAction, useLoad } from '../lib/hooks';
-import { initials, meetingDay, monthName } from '../lib/format';
+import { daysUntil, describeSchedule, initials, localDate, meetingDay, monthName } from '../lib/format';
 import { useClub } from '../components/ClubLayout';
 import { Chevron, FilmPhoto, Loading, Notice } from '../components/bits';
 
@@ -75,8 +75,7 @@ export function ThisMonth() {
                 readThroughNote={book.read_through_note} myPage={club.current_page}
                 isAdmin={isAdmin} onSaved={async () => { await Promise.all([reload(), reloadClub()]); }} />
 
-      <Meeting bookId={book.id} meetingAt={book.meeting_at} place={book.meeting_place}
-               myRsvp={book.my_rsvp} going={book.going_count} onChange={reload} />
+      <Meeting specialAt={book.meeting_at} specialPlace={book.meeting_place} />
 
       <Link to={`/club/${club.id}/table`} className="list-link" style={{ textDecoration: 'none' }}>
         <span className="stack" style={{ gap: 2, flex: 1 }}>
@@ -178,19 +177,33 @@ function Bookmark({ bookId, pageCount, readThrough, readThroughNote, myPage, isA
   );
 }
 
-function Meeting({ bookId, meetingAt, place, myRsvp, going, onChange }: {
-  bookId: string; meetingAt: string | null; place: string | null; myRsvp: RsvpStatus | null;
-  going: number; onChange: () => Promise<void>;
-}) {
-  const { club } = useClub();
+/**
+ * The next meeting. A date set on the book (a one-off) wins if it's still
+ * ahead; otherwise it's the next date from the club's regular schedule.
+ */
+function Meeting({ specialAt, specialPlace }: { specialAt: string | null; specialPlace: string | null }) {
+  const { club, me, isAdmin } = useClub();
   const act = useAction();
-  const when = meetingAt ? meetingDay(meetingAt) : null;
+  const special = specialAt && new Date(specialAt).getTime() > Date.now() - 3 * 3600_000 ? specialAt : null;
+  const at = special ?? club.next_meeting_at;
+  const meetingOn = at ? localDate(at, club.meet_timezone) : null;
+  const schedule = describeSchedule(club);
+  const place = (special && specialPlace) || club.meet_place || specialPlace;
+
+  const { data: rsvps, reload } = useLoad(
+    () => (meetingOn ? margins.meetingRsvps(club.id, meetingOn) : Promise.resolve([])), [club.id, meetingOn]);
+  const mine = rsvps?.find((r) => r.user_id === me)?.status ?? null;
+  const going = rsvps?.filter((r) => r.status === 'going').length ?? 0;
 
   async function answer(status: RsvpStatus) {
-    const ok = await act.run(async () => { await margins.rsvp(club.id, bookId, status); return true; });
-    if (ok) await onChange();
+    if (!meetingOn) return;
+    const ok = await act.run(async () => { await margins.rsvpMeeting(club.id, meetingOn, status); return true; });
+    if (ok) await reload();
   }
 
+  const when = at ? meetingDay(at) : null;
+  const days = at ? daysUntil(at) : null;
+  const soon = days === 0 ? 'today' : days === 1 ? 'tomorrow' : days != null && days < 7 ? `in ${days} days` : null;
   const options: [RsvpStatus, string][] = [['going', 'I’m coming'], ['maybe', 'Maybe'], ['not_going', 'Can’t make it']];
 
   return (
@@ -202,17 +215,25 @@ function Meeting({ bookId, meetingAt, place, myRsvp, going, onChange }: {
           <div style={{ fontFamily: 'var(--serif)', fontSize: 26, fontWeight: 700, marginTop: 3 }}>{when?.day ?? '—'}</div>
         </div>
         <div style={{ flex: 1, minWidth: 0, fontFamily: 'var(--sans)' }}>
-          <div style={{ fontWeight: 700 }}>{when ? `${when.weekday} · ${when.time}` : 'Meeting date to be decided'}</div>
-          <div className="meta">{place || 'Place to be decided'} · {going} coming</div>
+          <div style={{ fontWeight: 700 }}>
+            {when ? `${when.weekday} · ${when.time}` : 'Next meeting to be decided'}
+            {soon && <span className="pill current" style={{ marginLeft: 8 }}>{soon}</span>}
+          </div>
+          <div className="meta">{place || 'Place to be decided'}{at ? ` · ${going} coming` : ''}</div>
+          {schedule && <div className="hand" style={{ fontSize: 16, marginTop: 2 }}>we meet {schedule}{special ? ' (this one’s a special date)' : ''}</div>}
         </div>
       </div>
-      <div className="segmented" role="group" aria-label="Are you coming?">
-        {options.map(([value, label]) => (
-          <button key={value} type="button" aria-pressed={myRsvp === value} disabled={act.busy} onClick={() => answer(value)}>
-            {label}
-          </button>
-        ))}
-      </div>
+      {at ? (
+        <div className="segmented" role="group" aria-label="Are you coming?">
+          {options.map(([value, label]) => (
+            <button key={value} type="button" aria-pressed={mine === value} disabled={act.busy} onClick={() => answer(value)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : isAdmin ? (
+        <Link className="link" to={`/club/${club.id}/club`} style={{ alignSelf: 'flex-start' }}>Set when the club meets</Link>
+      ) : null}
       <Notice error>{act.error}</Notice>
     </section>
   );

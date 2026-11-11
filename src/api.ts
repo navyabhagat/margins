@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient, type RealtimeChannel } from '@supabase/supabase-js';
 import type {
   Book, BookOverview, BookRecord, Club, Member, MeetingNote, MyClub, NewBook, Photo,
-  Quote, Rating, RsvpStatus, Topic, TopicStatus, MemberRole,
+  Quote, Rating, RsvpStatus, Topic, TopicStatus, MemberRole, MeetingSchedule, MeetingRsvp,
 } from './types';
 
 const PHOTO_BUCKET = 'club-photos';
@@ -90,6 +90,32 @@ export class MarginsApi {
 
   async updateClub(clubId: string, changes: { name?: string; description?: string | null }): Promise<Club> {
     return unwrap(await this.supabase.from('clubs').update(changes).eq('id', clubId).select().single());
+  }
+
+  /** Admins: set when the club regularly meets. Pass frequency null to clear it. */
+  async setSchedule(clubId: string, schedule: Partial<MeetingSchedule>): Promise<Club> {
+    return unwrap(await this.supabase.from('clubs').update(schedule).eq('id', clubId).select().single());
+  }
+
+  /** Everyone's answers for one meeting date ("2026-11-03", the club's local date). */
+  async meetingRsvps(clubId: string, meetingOn: string): Promise<MeetingRsvp[]> {
+    return unwrap(await this.supabase.from('meeting_rsvps').select('club_id, meeting_on, user_id, status')
+      .eq('club_id', clubId).eq('meeting_on', meetingOn));
+  }
+
+  /** Say whether you're coming to the meeting on a given date. */
+  async rsvpMeeting(clubId: string, meetingOn: string, status: RsvpStatus) {
+    const user = await this.requireUser();
+    const updated = unwrap(await this.supabase.from('meeting_rsvps').update({ status })
+      .eq('club_id', clubId).eq('meeting_on', meetingOn).eq('user_id', user).select('status')) as unknown[];
+    if (updated.length > 0) return;
+    const { error } = await this.supabase.from('meeting_rsvps').insert({ club_id: clubId, meeting_on: meetingOn, status });
+    if (error?.code === '23505') {
+      unwrap(await this.supabase.from('meeting_rsvps').update({ status })
+        .eq('club_id', clubId).eq('meeting_on', meetingOn).eq('user_id', user));
+      return;
+    }
+    unwrap({ error });
   }
 
   async newInviteCode(clubId: string): Promise<string> {

@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { Book, BookOverview, BookStatus, Member, MemberRole } from '@margins';
+import type { Book, BookOverview, BookStatus, MeetFrequency, Member, MemberRole } from '@margins';
 import { margins } from '../lib/margins';
 import { useAction, useLoad } from '../lib/hooks';
-import { fromLocalInput, initials, monthYear, MOODS, toLocalInput } from '../lib/format';
+import { describeSchedule, fromLocalInput, initials, monthYear, MOODS, toLocalInput, WEEKDAYS } from '../lib/format';
 import { useClub } from '../components/ClubLayout';
 import { Loading, Logo, Notice } from '../components/bits';
 
@@ -43,6 +43,8 @@ export function ClubSettings() {
         {club.description && <p className="hand">{club.description}</p>}
       </div>
 
+      <Schedule isAdmin={isAdmin} onChange={reloadClub} />
+
       <Invite code={club.invite_code} clubId={club.id} isAdmin={isAdmin} onChange={reloadClub} />
 
       {isAdmin && (
@@ -78,6 +80,109 @@ export function ClubSettings() {
         <button className="link" type="button" style={{ alignSelf: 'flex-start' }} onClick={() => margins.signOut()}>Sign out</button>
       </section>
     </div>
+  );
+}
+
+function Schedule({ isAdmin, onChange }: { isAdmin: boolean; onChange: () => Promise<void> }) {
+  const { club } = useClub();
+  const [editing, setEditing] = useState(false);
+  const act = useAction();
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || club.meet_timezone;
+  const [v, setV] = useState({
+    frequency: (club.meet_frequency ?? 'weekly') as MeetFrequency,
+    weekday: club.meet_weekday ?? 2,
+    week: club.meet_week_of_month ?? 1,
+    time: (club.meet_time ?? '19:00').slice(0, 5),
+    anchor: club.meet_anchor ?? '',
+    place: club.meet_place ?? '',
+  });
+  const summary = describeSchedule(club);
+
+  // Every other week needs one meeting date to keep the rhythm: default to the next one on that weekday.
+  const nextOnWeekday = (wd: number) => {
+    const d = new Date(); d.setDate(d.getDate() + ((wd - d.getDay() + 7) % 7));
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    const ok = await act.run(async () => {
+      await margins.setSchedule(club.id, {
+        meet_frequency: v.frequency, meet_weekday: Number(v.weekday), meet_time: v.time,
+        meet_week_of_month: v.frequency === 'monthly' ? Number(v.week) : null,
+        meet_anchor: v.frequency === 'biweekly' ? (v.anchor || nextOnWeekday(Number(v.weekday))) : null,
+        meet_place: v.place.trim() || null, meet_timezone: tz,
+      });
+      return true;
+    });
+    if (ok) { setEditing(false); await onChange(); }
+  }
+  async function clear() {
+    const ok = await act.run(async () => {
+      await margins.setSchedule(club.id, { meet_frequency: null, meet_weekday: null, meet_week_of_month: null, meet_time: null, meet_anchor: null });
+      return true;
+    });
+    if (ok) { setEditing(false); await onChange(); }
+  }
+
+  return (
+    <section className="stack" aria-labelledby="schedule-h">
+      <h2 id="schedule-h">when we <em>meet</em></h2>
+      {summary ? (
+        <p className="hand" style={{ fontSize: 20 }}>{summary}{club.meet_place ? ` at ${club.meet_place}` : ''}</p>
+      ) : (
+        <p className="meta">No regular meeting time yet.{isAdmin ? ' Set one and everyone sees the next date.' : ''}</p>
+      )}
+      {club.next_meeting_at && (
+        <p className="meta">Next: {new Date(club.next_meeting_at).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+      )}
+      {isAdmin && !editing && (
+        <button className="link" type="button" style={{ alignSelf: 'flex-start' }} onClick={() => setEditing(true)}>
+          {summary ? 'Change the schedule' : 'Set a regular meeting time'}
+        </button>
+      )}
+      {isAdmin && editing && (
+        <form className="form" onSubmit={save}>
+          <div className="segmented" role="group" aria-label="How often">
+            {([['weekly', 'Every week'], ['biweekly', 'Every other week'], ['monthly', 'Once a month']] as [MeetFrequency, string][]).map(([f, label]) => (
+              <button key={f} type="button" aria-pressed={v.frequency === f} onClick={() => setV({ ...v, frequency: f })}>{label}</button>
+            ))}
+          </div>
+          <div className="form-grid">
+            {v.frequency === 'monthly' && (
+              <label className="field"><span>Which week</span>
+                <select id="meet-week" className="input" value={v.week} onChange={(e) => setV({ ...v, week: Number(e.target.value) })}>
+                  <option value={1}>first</option><option value={2}>second</option><option value={3}>third</option>
+                  <option value={4}>fourth</option><option value={-1}>last</option>
+                </select></label>
+            )}
+            <label className="field"><span>Day</span>
+              <select id="meet-day" className="input" value={v.weekday} onChange={(e) => setV({ ...v, weekday: Number(e.target.value), anchor: '' })}>
+                {WEEKDAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}
+              </select></label>
+            <label className="field"><span>Time</span>
+              <input id="meet-time" className="input" type="time" required value={v.time} onChange={(e) => setV({ ...v, time: e.target.value })} /></label>
+            {v.frequency === 'biweekly' && (
+              <label className="field"><span>Starting</span>
+                <input id="meet-anchor" className="input" type="date" value={v.anchor || nextOnWeekday(Number(v.weekday))}
+                       onChange={(e) => setV({ ...v, anchor: e.target.value })} /></label>
+            )}
+            <label className="field wide"><span>Usual place</span>
+              <input id="meet-place" className="input" maxLength={200} placeholder="Place to be decided" value={v.place}
+                     onChange={(e) => setV({ ...v, place: e.target.value })} /></label>
+          </div>
+          <p className="meta" style={{ fontSize: 13 }}>
+            {describeSchedule({ meet_frequency: v.frequency, meet_weekday: Number(v.weekday), meet_week_of_month: Number(v.week), meet_time: v.time })} · {tz.replace('_', ' ')} time
+          </p>
+          <div className="row" style={{ flexWrap: 'wrap' }}>
+            <button className="btn small" type="submit" disabled={act.busy}>Save schedule</button>
+            <button className="btn quiet" type="button" onClick={() => setEditing(false)}>Cancel</button>
+            {summary && <button className="btn quiet" type="button" onClick={clear}>No regular schedule</button>}
+          </div>
+        </form>
+      )}
+      <Notice error>{act.error}</Notice>
+    </section>
   );
 }
 
@@ -233,7 +338,7 @@ function BookForm({ initial, submitLabel, onSubmit, isNew, defaultMonth, current
           <input id={`${prefix}-month`} className="input" type="month" required value={v.month} onChange={set('month')} /></label>
         <label className="field"><span>Pages</span>
           <input id={`${prefix}-pages`} className="input tabular" type="number" min={1} value={v.pages} onChange={set('pages')} /></label>
-        <label className="field"><span>Meeting</span>
+        <label className="field"><span>Special meeting date</span>
           <input id={`${prefix}-meeting`} className="input" type="datetime-local" value={v.meeting} onChange={set('meeting')} /></label>
         <label className="field"><span>Published</span>
           <input id={`${prefix}-year`} className="input tabular" type="number" min={0} max={3000} placeholder="year" value={v.year} onChange={set('year')} /></label>

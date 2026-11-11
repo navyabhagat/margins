@@ -20,3 +20,5 @@ echo "seed: seed.sql"
 run supabase/seed.sql
 echo "tests: permissions.sql"
 psql -v ON_ERROR_STOP=1 -d "$DB" -f supabase/tests/permissions.sql 2>&1 | sed -n 's/.*NOTICE:  //p'
+echo "tests: schedule.sql"
+psql -v ON_ERROR_STOP=1 -d "$DB" -f supabase/tests/schedule.sql 2>&1 | sed -n 's/.*NOTICE:  //p'

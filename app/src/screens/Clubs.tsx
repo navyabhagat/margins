@@ -49,7 +49,7 @@ export function Clubs() {
                     <span style={{ fontSize: 18, fontWeight: 700, textTransform: 'lowercase' }}>{c.name}</span>
                     <span className="meta">
                       {c.current_book_title ? `Reading ${c.current_book_title}` : 'No book this month yet'}
-                      {c.current_meeting_at ? ` · meets ${meetingDay(c.current_meeting_at).month} ${meetingDay(c.current_meeting_at).day}` : ''}
+                      {(c.next_meeting_at ?? c.current_meeting_at) ? ` · meets ${meetingDay((c.next_meeting_at ?? c.current_meeting_at)!).month} ${meetingDay((c.next_meeting_at ?? c.current_meeting_at)!).day}` : ''}
                       {` · ${c.member_count} ${c.member_count === 1 ? 'member' : 'members'}`}
                     </span>
                   </span>
